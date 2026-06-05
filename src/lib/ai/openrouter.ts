@@ -29,6 +29,15 @@ export const designModel = openrouter(DEFAULT_MODEL, {
   extraBody: { models: [DEFAULT_MODEL, ...FALLBACK_MODELS] },
 });
 
+/**
+ * Variante con reasoning tokens habilitados: el modelo expone su razonamiento,
+ * que streameamos para mostrar "qué piensa el agente" mientras genera.
+ */
+export const designModelWithReasoning = openrouter(DEFAULT_MODEL, {
+  extraBody: { models: [DEFAULT_MODEL, ...FALLBACK_MODELS] },
+  reasoning: { enabled: true, effort: "low" },
+});
+
 export function assertOpenRouterConfigured() {
   if (!apiKey) {
     throw new Error(

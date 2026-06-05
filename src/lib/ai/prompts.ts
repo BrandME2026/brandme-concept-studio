@@ -1,5 +1,12 @@
 import type { DesignTokens } from "@/types/design";
 
+export type Language = "es" | "en";
+
+const LANGUAGE_LABEL: Record<Language, string> = {
+  es: "español",
+  en: "inglés (English)",
+};
+
 export const CHAT_SYSTEM_PROMPT = `Eres un director de arte y desarrollador front-end experto.
 Estás ayudando a un usuario a diseñar una web NUEVA inspirada en otra web de referencia.
 
@@ -12,7 +19,9 @@ REGLAS:
 - Razona sobre la paleta, la jerarquía tipográfica y el ritmo de espaciado reales.
 - Sé concreto y conciso. Responde en español.`;
 
-export const GENERATE_SYSTEM_PROMPT = `Eres un diseñador de sistemas y desarrollador front-end senior.
+export function generateSystemPrompt(language: Language = "es"): string {
+  const lang = LANGUAGE_LABEL[language];
+  return `Eres un diseñador de sistemas y desarrollador front-end senior.
 Genera una propuesta de diseño NUEVA inspirada en la web de referencia (tokens + screenshot
 + la conversación previa). NO es una copia: es una interpretación con identidad propia.
 
@@ -24,8 +33,11 @@ Debes producir dos cosas:
 REGLAS DEL HTML:
 - Solo Tailwind utility classes (se cargará Tailwind por CDN). Nada de <style> ni CSS externo.
 - Usa los colores como valores arbitrarios cuando haga falta: bg-[#010120], text-[#fc4c02], etc.
-- Diseño responsive, accesible, jerarquía clara. Español en los textos.
+- Diseño responsive, accesible, jerarquía clara.
+- IMPORTANTE: TODOS los textos del HTML y la descripción/principios del design system
+  deben estar en ${lang}. No mezcles idiomas.
 - NO copies textos de marca de la referencia; inventa copy genérico de ejemplo.`;
+}
 
 /** Bloque de contexto con los tokens, para el primer turno y la generación. */
 export function tokensContext(tokens: DesignTokens): string {
