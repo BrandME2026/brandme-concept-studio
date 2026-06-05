@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type { DesignTokens } from "@/types/design";
 
 export function ExtractionPanel({

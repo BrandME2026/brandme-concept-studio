@@ -1,3 +1,7 @@
+# Build reproducible: el lockfile fija versiones ya verificadas, así que no aplicamos
+# el cooldown de supply-chain (paquetes recién publicados) que bloquearía el install.
+minimumReleaseAge: 0
+
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver

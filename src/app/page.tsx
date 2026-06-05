@@ -35,7 +35,7 @@ export default function Home() {
       {/* Wordmark banner — firma al pie, tintado casi invisible */}
       <section className="bg-canvas py-12">
         <p className="select-none text-center text-6xl font-medium tracking-tighter text-hairline md:text-8xl">
-          clone-web
+          BrandMe Concept
         </p>
       </section>
     </main>

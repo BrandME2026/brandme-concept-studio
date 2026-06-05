@@ -17,7 +17,7 @@ const openrouter = createOpenRouter({
   apiKey,
   headers: {
     "HTTP-Referer": process.env.OPENROUTER_SITE_URL ?? "",
-    "X-Title": process.env.OPENROUTER_SITE_NAME ?? "clone-web",
+    "X-Title": process.env.OPENROUTER_SITE_NAME ?? "BrandMe Concept",
   },
 });
 

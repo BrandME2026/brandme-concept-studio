@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "clone-web — propón un diseño desde cualquier URL",
+  title: "BrandMe Concept — propón un diseño desde cualquier URL",
   description:
     "Pega una URL, extrae su diseño y genera una propuesta inspirada: DESIGN.md + preview en vivo.",
 };

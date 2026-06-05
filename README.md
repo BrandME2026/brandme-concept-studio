@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BrandMe Concept
 
-## Getting Started
+Webapp donde pegas la **URL** de cualquier web, se **extrae su diseño real** (colores,
+tipografía, espaciado, layout + screenshot), conversas con una **IA** sobre esa estética y
+la IA **propone un diseño NUEVO inspirado** — generando un **`DESIGN.md`** y un **preview
+HTML/Tailwind en vivo** en un iframe.
 
-First, run the development server:
+> No es un descargador de sitios ni un clon: la IA hace una *propuesta inspirada*, no una copia.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Stack
+
+- **Next.js 16** (App Router) + React 19 + TypeScript
+- **Tailwind CSS v4** + identidad visual derivada del `DESIGN.md` de Together AI
+- **Playwright** (Chromium headless) para la extracción
+- **OpenRouter** (Vercel AI SDK v6) para chat y generación, con modelos de fallback
+- **Vitest** para tests (TDD)
+- **Docker + Railway** para el despliegue (Playwright corre completo en el contenedor)
+
+## Flujo
+
+```
+URL → /api/extract (Playwright → DesignTokens + screenshot)
+    → /api/chat    (streamText, contexto = tokens + conversación)
+    → /api/generate (generateObject → propuesta → DESIGN.md + HTML)
+    → preview en iframe sandbox + DESIGN.md descargable
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Desarrollo
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm install
+pnpm exec playwright install chromium   # navegador para extracción local
+cp .env.example .env.local              # añade tu OPENROUTER_API_KEY
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+> Nota: este entorno exporta `NODE_ENV=development` globalmente; el script `build` ya fuerza
+> `NODE_ENV=production` con cross-env para que el prerender no falle.
 
-## Learn More
+## Tests
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm test
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Docker / Railway
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+docker build -t BrandMe Concept .
+docker run -p 3000:3000 -e OPENROUTER_API_KEY=sk-or-... BrandMe Concept
+```
 
-## Deploy on Vercel
+Railway detecta el `Dockerfile` (ver `railway.json`). Configura `OPENROUTER_API_KEY` en las
+variables del proyecto.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Sobre getdesign
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+La identidad visual se instaló con `npx getdesign add together.ai`, que copia un `DESIGN.md`
+pre-generado. **No ejecutamos getdesign en runtime**: solo reusamos su formato `DESIGN.md`
+(el que la IA aprende a generar) y su estética como identidad de la app.
