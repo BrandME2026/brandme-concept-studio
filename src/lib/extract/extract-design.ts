@@ -24,8 +24,8 @@ export async function extractDesign(url: string): Promise<ExtractionResult> {
       viewport: { width: 1280, height: 800 },
     });
 
-    // SSRF en profundidad: aborta cualquier request (incl. redirects/DNS-rebinding)
-    // que apunte a un host interno, no solo la URL inicial.
+    // SSRF en profundidad: aborta sub-requests/redirects a IPs literales internas.
+    // La URL de entrada ya pasó assertSafeUrl (con resolución DNS) en el route handler.
     await page.route("**/*", (route) => {
       try {
         if (isBlockedHost(new URL(route.request().url()).hostname)) {

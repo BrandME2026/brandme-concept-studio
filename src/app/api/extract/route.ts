@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { urlInputSchema } from "@/lib/schemas";
 import { extractDesign } from "@/lib/extract/extract-design";
-import { isBlockedHost } from "@/lib/extract/ssrf-guard";
+import { assertSafeUrl } from "@/lib/extract/ssrf-guard";
 
 // Playwright requiere el runtime de Node (no edge).
 export const runtime = "nodejs";
@@ -32,8 +32,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // SSRF: bloquear hosts internos antes de navegar.
-  if (isBlockedHost(new URL(parsed.data.url).hostname)) {
+  // SSRF: resolver DNS y bloquear si la URL apunta (directa o por rebinding) a la red interna.
+  try {
+    await assertSafeUrl(parsed.data.url);
+  } catch {
     return NextResponse.json(
       {
         success: false,
