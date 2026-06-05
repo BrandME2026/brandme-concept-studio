@@ -6,6 +6,7 @@ import { generateSystemPrompt } from "@/lib/ai/prompts";
 import { buildGenerateMessages } from "@/lib/ai/build-messages";
 import { designProposalSchema, tokensSchema } from "@/lib/schemas";
 import { serializeDesignMd } from "@/lib/ai/design-md";
+import { injectImages } from "@/lib/preview/inject-images";
 import type { DesignTokens } from "@/types/design";
 
 export const runtime = "nodejs";
@@ -16,6 +17,8 @@ const generateBodySchema = z.object({
   screenshot: z.string(),
   brief: z.string().default("Propón un diseño inspirado en esta web."),
   language: z.enum(["es", "en"]).default("es"),
+  // Imágenes del usuario (data URLs) para incrustar en el diseño generado.
+  images: z.array(z.string()).max(6).default([]),
 });
 
 /**
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
   }
 
   const tokens = parsed.data.tokens as unknown as DesignTokens;
-  const { screenshot, brief, language } = parsed.data;
+  const { screenshot, brief, language, images } = parsed.data;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -74,8 +77,8 @@ export async function POST(req: Request) {
         const result = streamObject({
           model: designModel,
           schema: designProposalSchema,
-          system: generateSystemPrompt(language),
-          messages: buildGenerateMessages(tokens, screenshot, brief),
+          system: generateSystemPrompt(language, images.length),
+          messages: buildGenerateMessages(tokens, screenshot, brief, images),
         });
 
         const seenFields = new Set<string>();
@@ -92,7 +95,9 @@ export async function POST(req: Request) {
 
         const object = await result.object;
         const designMd = serializeDesignMd(object);
-        send({ type: "done", proposal: object, designMd, html: object.html });
+        // Sustituir los marcadores {{IMG_n}} por las imágenes reales del usuario.
+        const html = injectImages(object.html, images);
+        send({ type: "done", proposal: object, designMd, html });
       } catch (err) {
         console.error("[generate] fallo generando propuesta", err);
         send({ type: "error", message: "No se pudo generar la propuesta" });

@@ -19,8 +19,21 @@ REGLAS:
 - Razona sobre la paleta, la jerarquía tipográfica y el ritmo de espaciado reales.
 - Sé concreto y conciso. Responde en español.`;
 
-export function generateSystemPrompt(language: Language = "es"): string {
+export function generateSystemPrompt(
+  language: Language = "es",
+  imageCount = 0,
+): string {
   const lang = LANGUAGE_LABEL[language];
+  const imagesRule =
+    imageCount > 0
+      ? `\n- El usuario ha subido ${imageCount} imagen(es) (las ves al final del mensaje, en orden).
+  COLÓCALAS en el HTML donde tengan sentido (logo en el header, foto en el hero, etc.) usando
+  EXACTAMENTE el marcador como src: <img src="{{IMG_1}}" ...>, <img src="{{IMG_2}}" ...> (1-indexado,
+  en el mismo orden en que se te muestran). NO inventes URLs de imagen ni uses placeholders externos
+  cuando haya imágenes del usuario disponibles. Usa cada imagen al menos una vez si encaja.`
+      : `\n- Para imágenes decorativas usa bloques de color o gradientes con Tailwind; NO enlaces a
+  imágenes externas que podrían no cargar.`;
+
   return `Eres un diseñador de sistemas y desarrollador front-end senior.
 Genera una propuesta de diseño NUEVA inspirada en la web de referencia (tokens + screenshot
 + la conversación previa). NO es una copia: es una interpretación con identidad propia.
@@ -36,7 +49,7 @@ REGLAS DEL HTML:
 - Diseño responsive, accesible, jerarquía clara.
 - IMPORTANTE: TODOS los textos del HTML y la descripción/principios del design system
   deben estar en ${lang}. No mezcles idiomas.
-- NO copies textos de marca de la referencia; inventa copy genérico de ejemplo.`;
+- NO copies textos de marca de la referencia; inventa copy genérico de ejemplo.${imagesRule}`;
 }
 
 /** Bloque de contexto con los tokens, para el primer turno y la generación. */

@@ -2,6 +2,7 @@
 
 import type { UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
+import { ImageUploader } from "./image-uploader";
 
 /**
  * Panel de chat. El estado vive en studio-client (para que sus mensajes Y el texto
@@ -13,12 +14,16 @@ export function ChatPanel({
   onInputChange,
   onSend,
   busy,
+  images,
+  onImagesChange,
 }: {
   messages: UIMessage[];
   input: string;
   onInputChange: (v: string) => void;
   onSend: (text: string) => void;
   busy: boolean;
+  images: string[];
+  onImagesChange: (next: string[]) => void;
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -47,6 +52,8 @@ export function ChatPanel({
           </div>
         ))}
       </div>
+
+      <ImageUploader images={images} onChange={onImagesChange} disabled={busy} />
 
       <form
         onSubmit={(e) => {

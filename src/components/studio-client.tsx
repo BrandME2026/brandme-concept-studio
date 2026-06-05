@@ -9,6 +9,7 @@ import type { DesignProposal } from "@/lib/schemas";
 import type { Language } from "@/lib/ai/prompts";
 import { StudioTopbar } from "./studio-topbar";
 import { ExtractionPanel } from "./extraction-panel";
+import { ExtractionDrawer } from "./extraction-drawer";
 import { ChatPanel } from "./chat-panel";
 import { PreviewFrame } from "./preview-frame";
 import { GenerationProgress } from "./generation-progress";
@@ -44,6 +45,7 @@ export function StudioClient({ url }: { url: string }) {
   // La extracción (detalle técnico) está oculta por defecto: al cliente final le
   // importa el resultado, no los tokens. Se muestra bajo demanda.
   const [showExtraction, setShowExtraction] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
 
   // Chat elevado: sus mensajes alimentan el brief de la generación.
   const chat = useChat({
@@ -114,6 +116,7 @@ export function StudioClient({ url }: { url: string }) {
           screenshot: extraction.screenshot,
           brief: briefFromChat,
           language,
+          images,
         }),
       });
 
@@ -157,7 +160,7 @@ export function StudioClient({ url }: { url: string }) {
     } finally {
       setGenerating(false);
     }
-  }, [extraction, briefFromChat, language]);
+  }, [extraction, briefFromChat, language, images]);
 
   if (phase === "extracting") {
     return (
@@ -222,27 +225,10 @@ export function StudioClient({ url }: { url: string }) {
         onToggleExtraction={() => setShowExtraction((v) => !v)}
       />
 
-      {/* Desktop: paneles redimensionables. La extracción es opcional. */}
+      {/* Desktop: chat + preview redimensionables. Extracción va en un drawer overlay. */}
       <div className="hidden flex-1 lg:block">
-        <Group
-          orientation="horizontal"
-          className="h-full"
-          key={showExtraction ? "with-extract" : "no-extract"}
-        >
-          {showExtraction && (
-            <>
-              <Panel defaultSize="24%" minSize="16%">
-                <div className="h-full overflow-hidden border-r border-hairline">
-                  <ExtractionPanel
-                    tokens={extraction.tokens}
-                    screenshot={extraction.screenshot}
-                  />
-                </div>
-              </Panel>
-              <ResizeHandle />
-            </>
-          )}
-          <Panel defaultSize={showExtraction ? "28%" : "36%"} minSize="18%">
+        <Group orientation="horizontal" className="h-full">
+          <Panel defaultSize="34%" minSize="20%">
             <div className="h-full overflow-hidden border-r border-hairline">
               <ChatPanel
                 messages={chat.messages}
@@ -250,15 +236,25 @@ export function StudioClient({ url }: { url: string }) {
                 onInputChange={setChatInput}
                 onSend={handleChatSend}
                 busy={chatBusy}
+                images={images}
+                onImagesChange={setImages}
               />
             </div>
           </Panel>
           <ResizeHandle />
-          <Panel defaultSize={showExtraction ? "48%" : "64%"} minSize="28%">
+          <Panel defaultSize="66%" minSize="30%">
             <div className="h-full overflow-hidden">{previewArea}</div>
           </Panel>
         </Group>
       </div>
+
+      {/* Drawer overlay con el diseño extraído (bajo demanda) */}
+      <ExtractionDrawer
+        open={showExtraction}
+        onClose={() => setShowExtraction(false)}
+        tokens={extraction.tokens}
+        screenshot={extraction.screenshot}
+      />
 
       {/* Móvil: pestañas */}
       <div className="flex flex-1 flex-col lg:hidden">
@@ -292,6 +288,8 @@ export function StudioClient({ url }: { url: string }) {
               onInputChange={setChatInput}
               onSend={handleChatSend}
               busy={chatBusy}
+              images={images}
+              onImagesChange={setImages}
             />
           )}
           {mobileTab === "preview" && previewArea}
