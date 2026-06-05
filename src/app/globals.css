@@ -1,26 +1,64 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Identidad visual de clone-web — derivada del DESIGN.md de Together AI.
+ * Bandas alternas negro-azulado / blanco, degradado de marca como única decoración,
+ * tipografía de dos caras (display sans + mono mayúsculas), radio 4px, sin sombras en claro.
+ */
+@theme {
+  /* ─── Colores ─── */
+  --color-ink: #000000;
+  --color-primary: #000000;
+  --color-on-primary: #ffffff;
+  --color-canvas: #ffffff;
+  --color-canvas-dark: #010120;
+  --color-surface-dark-soft: #313641;
+  --color-on-dark: #ffffff;
+  --color-body: #959494;
+  --color-hairline: #ebebeb;
+
+  /* Degradado de marca (naranja → magenta → periwinkle) — única chrome decorativa */
+  --color-accent-orange: #fc4c02;
+  --color-accent-magenta: #ef2cc1;
+  --color-accent-periwinkle: #bdbbff;
+  --color-accent-mint: #c8f6f9;
+
+  /* ─── Tipografía ─── */
+  --font-display: var(--font-display), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ─── Radios ─── */
+  --radius-xs: 3.25px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* ─── Espaciado de sección ─── */
+  --spacing-section: 80px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Degradado de marca reutilizable como utilidad de fondo */
+@utility bg-brand-gradient {
+  background-image: linear-gradient(
+    120deg,
+    var(--color-accent-orange) 0%,
+    var(--color-accent-magenta) 50%,
+    var(--color-accent-periwinkle) 100%
+  );
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+ * Eyebrow mono en mayúsculas — etiqueta técnica recurrente (DESIGN.md mono-caps-eyebrow).
+ * Display sans nunca lleva labels de botón; el mono nunca lleva párrafos.
+ */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-display);
 }
