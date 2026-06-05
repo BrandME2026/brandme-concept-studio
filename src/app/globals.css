@@ -23,6 +23,13 @@
   --color-accent-periwinkle: #bdbbff;
   --color-accent-mint: #c8f6f9;
 
+  /* ─── Acento del chat (estética Coinbase) ─── */
+  --color-cb-blue: #0052ff;
+  --color-cb-blue-active: #003ecc;
+  --color-cb-surface-soft: #f7f7f7;
+  --color-cb-hairline-soft: #eef0f3;
+  --color-muted: #7c828a;
+
   /* ─── Tipografía ─── */
   --font-display: var(--font-display), "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
@@ -31,6 +38,9 @@
   --radius-xs: 3.25px;
   --radius-sm: 4px;
   --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-cb: 18px;
+  --radius-pill: 100px;
 
   /* ─── Espaciado de sección ─── */
   --spacing-section: 80px;
@@ -61,4 +71,38 @@
 
 body {
   font-family: var(--font-display);
+}
+
+/* ─── Animaciones de la guía de pasos (preview vacío) ─── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes step-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes step-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 82, 255, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(0, 82, 255, 0); }
+}
+
+@utility animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+@utility animate-step {
+  animation: step-in 0.5s ease-out both;
+}
+
+/* El número de cada paso pulsa secuencialmente (delay inline por paso) */
+.animate-step > span:first-child {
+  animation: step-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-step,
+  .animate-step > span:first-child {
+    animation: none;
+  }
 }

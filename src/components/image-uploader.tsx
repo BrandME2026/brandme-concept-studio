@@ -40,16 +40,16 @@ export function ImageUploader({
   }
 
   return (
-    <div className="border-t border-hairline p-4">
+    <div className="px-3 pt-3">
       <div className="flex items-center justify-between">
-        <span className="eyebrow text-body">
+        <span className="text-xs font-medium text-muted">
           Imágenes ({images.length}/{MAX_IMAGES})
         </span>
         <button
           type="button"
           disabled={disabled || images.length >= MAX_IMAGES}
           onClick={() => inputRef.current?.click()}
-          className="rounded-sm border border-hairline px-2 py-1 font-mono text-[10px] uppercase text-body transition-colors hover:bg-hairline disabled:opacity-50"
+          className="rounded-pill border border-[--color-cb-hairline-soft] px-3 py-1 text-[11px] font-semibold text-[--color-cb-blue] transition-colors hover:bg-[--color-cb-surface-soft] disabled:opacity-40"
         >
           + Subir
         </button>
@@ -80,9 +80,6 @@ export function ImageUploader({
           ))}
         </div>
       )}
-      <p className="mt-2 text-[10px] text-body">
-        La IA las colocará en el diseño (logo, hero, etc.).
-      </p>
 
       <input
         ref={inputRef}

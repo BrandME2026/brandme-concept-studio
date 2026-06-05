@@ -226,8 +226,8 @@ export function StudioClient({ url }: { url: string }) {
       />
 
       {/* Desktop: chat + preview redimensionables. Extracción va en un drawer overlay. */}
-      <div className="hidden flex-1 lg:block">
-        <Group orientation="horizontal" className="h-full">
+      <div className="hidden min-h-0 flex-1 lg:flex">
+        <Group orientation="horizontal" className="h-full w-full">
           <Panel defaultSize="34%" minSize="20%">
             <div className="h-full overflow-hidden border-r border-hairline">
               <ChatPanel
@@ -315,21 +315,35 @@ function EmptyPreview({ errorMsg }: { errorMsg: string | null }) {
       </div>
     );
   }
+  const steps = [
+    "Revisa el diseño extraído",
+    "Refina en el chat (opcional)",
+    "Pulsa Generar propuesta",
+  ];
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-      <ol className="space-y-2 text-sm text-body">
-        <li>
-          <span className="font-mono text-ink">1 ·</span> Revisa el diseño extraído
-        </li>
-        <li>
-          <span className="font-mono text-ink">2 ·</span> Refina en el chat (opcional)
-        </li>
-        <li>
-          <span className="font-mono text-ink">3 ·</span> Pulsa{" "}
-          <span className="font-mono uppercase text-ink">Generar propuesta</span>
-        </li>
+    <div className="flex h-full flex-col items-center justify-center gap-6 p-8 text-center">
+      {/* Icono de marca flotante */}
+      <div className="bg-brand-gradient h-14 w-14 animate-float rounded-[--radius-cb] opacity-90" />
+
+      <ol className="flex flex-col gap-3">
+        {steps.map((label, i) => (
+          <li
+            key={i}
+            className="flex animate-step items-center gap-3 text-sm text-body"
+            style={{ animationDelay: `${i * 180}ms` }}
+          >
+            <span
+              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[--color-cb-blue] font-mono text-xs text-on-primary"
+              style={{ animationDelay: `${i * 600}ms` }}
+            >
+              {i + 1}
+            </span>
+            <span>{label}</span>
+          </li>
+        ))}
       </ol>
-      <p className="max-w-xs text-xs text-body">
+
+      <p className="max-w-xs text-xs text-muted">
         El preview de tu diseño nuevo aparecerá aquí.
       </p>
     </div>
