@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { urlInputSchema } from "@/lib/schemas";
 import { extractDesign } from "@/lib/extract/extract-design";
+import { isBlockedHost } from "@/lib/extract/ssrf-guard";
 
 // Playwright requiere el runtime de Node (no edge).
 export const runtime = "nodejs";
@@ -26,6 +27,17 @@ export async function POST(request: Request) {
           code: "INVALID_URL",
           message: parsed.error.issues[0]?.message ?? "URL no válida",
         },
+      },
+      { status: 400 },
+    );
+  }
+
+  // SSRF: bloquear hosts internos antes de navegar.
+  if (isBlockedHost(new URL(parsed.data.url).hostname)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: "BLOCKED_HOST", message: "Esa URL no está permitida." },
       },
       { status: 400 },
     );

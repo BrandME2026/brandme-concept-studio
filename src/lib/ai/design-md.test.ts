@@ -27,9 +27,18 @@ describe("serializeDesignMd", () => {
   it("incluye frontmatter YAML con nombre y colores", () => {
     const md = serializeDesignMd(proposal);
     expect(md).toMatch(/^---\n/);
-    expect(md).toContain("name: Aurora");
+    expect(md).toContain('name: "Aurora"');
     expect(md).toContain('primary: "#000000"');
     expect(md).toContain('accent: "#fc4c02"');
+  });
+
+  it("escapa valores con caracteres que romperían el YAML", () => {
+    const md = serializeDesignMd({
+      ...proposal,
+      name: 'Bold: Modern "X"',
+    });
+    // El nombre va citado y las comillas internas escapadas → YAML válido.
+    expect(md).toContain('name: "Bold: Modern \\"X\\""');
   });
 
   it("incluye sección Overview con la descripción", () => {

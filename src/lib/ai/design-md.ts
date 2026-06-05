@@ -1,6 +1,15 @@
 import type { DesignProposal } from "@/lib/schemas";
 
 /**
+ * Cita un escalar para YAML seguro: los strings del LLM pueden contener ':', '#',
+ * comillas o saltos de línea que romperían el frontmatter sin escapar.
+ */
+function yamlString(value: string): string {
+  const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, " ");
+  return `"${escaped}"`;
+}
+
+/**
  * Serializa la propuesta del LLM al formato DESIGN.md (frontmatter YAML + secciones),
  * el mismo formato que usa el CLI getdesign. Código determinista: el modelo aporta el
  * juicio (los valores), no el formato.
@@ -8,8 +17,8 @@ import type { DesignProposal } from "@/lib/schemas";
 export function serializeDesignMd(p: DesignProposal): string {
   const frontmatter = `---
 version: alpha
-name: ${p.name}
-description: ${p.description}
+name: ${yamlString(p.name)}
+description: ${yamlString(p.description)}
 
 colors:
   primary: "${p.colors.primary}"
@@ -18,8 +27,8 @@ colors:
   accent: "${p.colors.accent}"
 
 typography:
-  display: ${p.typography.displayFamily}
-  body: ${p.typography.bodyFamily}
+  display: ${yamlString(p.typography.displayFamily)}
+  body: ${yamlString(p.typography.bodyFamily)}
 ---`;
 
   const scaleRows = p.typography.scale

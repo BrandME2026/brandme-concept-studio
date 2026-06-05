@@ -54,6 +54,7 @@ export function StudioClient({ url }: { url: string }) {
   const handleGenerate = useCallback(async () => {
     if (!extraction) return;
     setGenerating(true);
+    setErrorMsg(null);
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -116,8 +117,16 @@ export function StudioClient({ url }: { url: string }) {
           {proposal ? (
             <PreviewFrame html={proposal.html} />
           ) : (
-            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-body">
-              Genera una propuesta para ver el preview en vivo.
+            <div className="flex h-full items-center justify-center p-6 text-center text-sm">
+              {errorMsg ? (
+                <span className="text-accent-orange" role="alert">
+                  {errorMsg}
+                </span>
+              ) : (
+                <span className="text-body">
+                  Genera una propuesta para ver el preview en vivo.
+                </span>
+              )}
             </div>
           )}
         </div>

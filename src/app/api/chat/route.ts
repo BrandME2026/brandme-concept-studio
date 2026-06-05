@@ -27,7 +27,16 @@ export async function POST(req: Request) {
     );
   }
 
-  const { messages, tokens }: ChatBody = await req.json();
+  let body: ChatBody;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json(
+      { success: false, error: { code: "BAD_JSON", message: "Cuerpo inválido" } },
+      { status: 400 },
+    );
+  }
+  const { messages, tokens } = body;
 
   const system = tokens
     ? `${CHAT_SYSTEM_PROMPT}\n\n${tokensContext(tokens)}`

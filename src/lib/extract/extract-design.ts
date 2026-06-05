@@ -2,6 +2,7 @@ import { chromium, type Browser } from "playwright";
 import type { DesignTokens } from "@/types/design";
 import { extractFromDom } from "./extractor-script";
 import { buildDesignTokens } from "./tokens";
+import { isBlockedHost } from "./ssrf-guard";
 
 export interface ExtractionResult {
   tokens: DesignTokens;
@@ -21,6 +22,19 @@ export async function extractDesign(url: string): Promise<ExtractionResult> {
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({
       viewport: { width: 1280, height: 800 },
+    });
+
+    // SSRF en profundidad: aborta cualquier request (incl. redirects/DNS-rebinding)
+    // que apunte a un host interno, no solo la URL inicial.
+    await page.route("**/*", (route) => {
+      try {
+        if (isBlockedHost(new URL(route.request().url()).hostname)) {
+          return route.abort();
+        }
+      } catch {
+        return route.abort();
+      }
+      return route.continue();
     });
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: TIMEOUT });
