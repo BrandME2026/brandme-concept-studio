@@ -7,6 +7,9 @@ import { buildGenerateMessages } from "@/lib/ai/build-messages";
 import { designProposalSchema, tokensSchema, QUALITY_VALUES } from "@/lib/schemas";
 import { serializeDesignMd } from "@/lib/ai/design-md";
 import { injectImages } from "@/lib/preview/inject-images";
+import { getSessionId } from "@/lib/session";
+import { saveGeneration } from "@/lib/db/history";
+import { isDbConfigured } from "@/lib/db/client";
 import type { DesignTokens } from "@/types/design";
 
 export const runtime = "nodejs";
@@ -61,6 +64,10 @@ export async function POST(req: Request) {
   const tokens = parsed.data.tokens as unknown as DesignTokens;
   const { screenshot, brief, language, images, quality } = parsed.data;
 
+  // Sesión para el historial (cookie); se lee aquí, fuera del stream.
+  const sessionId = await getSessionId();
+  const sourceUrl = tokens?.meta?.url ?? "";
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -100,6 +107,23 @@ export async function POST(req: Request) {
         // Sustituir los marcadores {{IMG_n}} por las imágenes reales del usuario.
         const html = injectImages(object.html, images);
         send({ type: "done", proposal: object, designMd, html });
+
+        // Guardar en el historial (secundario: no romper la generación si falla).
+        if (isDbConfigured()) {
+          try {
+            await saveGeneration({
+              sessionId,
+              url: sourceUrl,
+              name: object.name,
+              designMd,
+              html,
+              screenshot,
+              interactions: object.interactions ?? null,
+            });
+          } catch (e) {
+            console.error("[generate] no se pudo guardar en historial", e);
+          }
+        }
       } catch (err) {
         console.error("[generate] fallo generando propuesta", err);
         send({ type: "error", message: "No se pudo generar la propuesta" });

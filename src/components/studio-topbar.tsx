@@ -57,6 +57,12 @@ export function StudioTopbar({
       </div>
 
       <div className="flex items-center gap-2">
+        <Link
+          href="/historial"
+          className="hidden rounded-sm px-3 py-1.5 font-mono text-xs uppercase text-body transition-colors hover:bg-hairline lg:block"
+        >
+          Historial
+        </Link>
         <button
           type="button"
           onClick={onToggleExtraction}
