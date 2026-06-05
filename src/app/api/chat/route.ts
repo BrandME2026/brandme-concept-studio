@@ -12,7 +12,20 @@ interface ChatBody {
 }
 
 export async function POST(req: Request) {
-  assertOpenRouterConfigured();
+  try {
+    assertOpenRouterConfigured();
+  } catch {
+    return Response.json(
+      {
+        success: false,
+        error: {
+          code: "NOT_CONFIGURED",
+          message: "El servicio de IA no está configurado (falta OPENROUTER_API_KEY).",
+        },
+      },
+      { status: 503 },
+    );
+  }
 
   const { messages, tokens }: ChatBody = await req.json();
 

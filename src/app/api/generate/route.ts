@@ -18,7 +18,20 @@ const generateBodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  assertOpenRouterConfigured();
+  try {
+    assertOpenRouterConfigured();
+  } catch {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "NOT_CONFIGURED",
+          message: "El servicio de IA no está configurado (falta OPENROUTER_API_KEY).",
+        },
+      },
+      { status: 503 },
+    );
+  }
 
   const parsed = generateBodySchema.safeParse(await req.json());
   if (!parsed.success) {
