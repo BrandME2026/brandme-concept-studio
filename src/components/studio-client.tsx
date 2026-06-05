@@ -163,16 +163,7 @@ export function StudioClient({ url }: { url: string }) {
   }, [extraction, briefFromChat, language, images]);
 
   if (phase === "extracting") {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-canvas-dark text-on-dark">
-        <div className="bg-brand-gradient h-12 w-12 animate-pulse rounded-sm" />
-        <span className="eyebrow text-body">Extrayendo diseño de {url}</span>
-        <p className="max-w-xs text-center text-xs text-body">
-          Renderizamos la web completa para leer sus colores, tipografía y
-          layout reales. Puede tardar unos segundos.
-        </p>
-      </div>
-    );
+    return <ExtractionLoading url={url} />;
   }
 
   if (phase === "error" || !extraction) {
@@ -302,6 +293,38 @@ export function StudioClient({ url }: { url: string }) {
 function ResizeHandle() {
   return (
     <Separator className="w-1 cursor-col-resize bg-hairline transition-colors hover:bg-accent-periwinkle" />
+  );
+}
+
+/** Pantalla de extracción con temporizador y aviso si tarda más de lo normal. */
+function ExtractionLoading({ url }: { url: string }) {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setSecs((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const slow = secs >= 25; // umbral de "tarda más de lo normal"
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-canvas-dark px-6 text-on-dark">
+      <div className="bg-brand-gradient h-12 w-12 animate-pulse rounded-sm" />
+      <span className="eyebrow text-body">Extrayendo diseño…</span>
+      <p className="max-w-sm text-center text-xs text-body">
+        Renderizamos la web completa para leer sus colores, tipografía y layout
+        reales.
+      </p>
+      <span className="font-mono text-sm text-on-dark-soft">{secs}s</span>
+      {slow && (
+        <p className="max-w-sm text-center text-xs text-accent-mint">
+          Esta web tarda más de lo normal (puede ser pesada o estar protegida
+          contra bots). Seguimos intentándolo… si falla, te avisaremos.
+        </p>
+      )}
+      <p className="max-w-xs truncate text-center text-[10px] text-body" title={url}>
+        {url}
+      </p>
+    </div>
   );
 }
 
