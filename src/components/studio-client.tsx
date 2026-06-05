@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
+import { Panel, Group, Separator } from "react-resizable-panels";
 import type { DesignTokens } from "@/types/design";
 import type { DesignProposal } from "@/lib/schemas";
 import type { Language } from "@/lib/ai/prompts";
+import { StudioTopbar } from "./studio-topbar";
 import { ExtractionPanel } from "./extraction-panel";
 import { ChatPanel } from "./chat-panel";
 import { PreviewFrame } from "./preview-frame";
 import { GenerationProgress } from "./generation-progress";
-import { Button } from "./ui/button";
+import { ProposalActions } from "./proposal-actions";
 
 interface Extraction {
   tokens: DesignTokens;
@@ -22,6 +26,9 @@ interface Proposal {
 }
 
 type Phase = "extracting" | "ready" | "error";
+type MobileTab = "extract" | "chat" | "preview";
+
+const DEFAULT_BRIEF = "Propón un diseño inspirado en esta web.";
 
 export function StudioClient({ url }: { url: string }) {
   const [phase, setPhase] = useState<Phase>("extracting");
@@ -30,9 +37,22 @@ export function StudioClient({ url }: { url: string }) {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [generating, setGenerating] = useState(false);
   const [language, setLanguage] = useState<Language>("es");
-  // Estado de progreso de la generación en vivo.
   const [partial, setPartial] = useState<Partial<DesignProposal> | null>(null);
   const [seenFields, setSeenFields] = useState<Set<string>>(new Set());
+  const [mobileTab, setMobileTab] = useState<MobileTab>("extract");
+  const [chatInput, setChatInput] = useState("");
+  // La extracción (detalle técnico) está oculta por defecto: al cliente final le
+  // importa el resultado, no los tokens. Se muestra bajo demanda.
+  const [showExtraction, setShowExtraction] = useState(false);
+
+  // Chat elevado: sus mensajes alimentan el brief de la generación.
+  const chat = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: { tokens: extraction?.tokens },
+    }),
+  });
+  const chatBusy = chat.status === "streaming" || chat.status === "submitted";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -44,7 +64,6 @@ export function StudioClient({ url }: { url: string }) {
           body: JSON.stringify({ url }),
           signal: controller.signal,
         });
-        // Defensa: si el server devuelve HTML de error (500), res.json() rompería.
         const json = await res.json().catch(() => null);
         if (!json) throw new Error("El servidor devolvió una respuesta inválida");
         if (!json.success) throw new Error(json.error?.message ?? "Error");
@@ -59,6 +78,24 @@ export function StudioClient({ url }: { url: string }) {
     return () => controller.abort();
   }, [url]);
 
+  // Brief derivado de los mensajes enviados Y el texto pendiente en el input
+  // (para que el usuario pueda escribir y pulsar Generar sin "Enviar" primero).
+  const briefFromChat = useMemo(() => {
+    const sent = chat.messages
+      .filter((m) => m.role === "user")
+      .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text));
+    const all = [...sent, chatInput].join(" ").trim();
+    return all || DEFAULT_BRIEF;
+  }, [chat.messages, chatInput]);
+
+  const handleChatSend = useCallback(
+    (text: string) => {
+      chat.sendMessage({ text });
+      setChatInput("");
+    },
+    [chat],
+  );
+
   const handleGenerate = useCallback(async () => {
     if (!extraction) return;
     setGenerating(true);
@@ -66,6 +103,7 @@ export function StudioClient({ url }: { url: string }) {
     setProposal(null);
     setPartial(null);
     setSeenFields(new Set());
+    setMobileTab("preview");
 
     try {
       const res = await fetch("/api/generate", {
@@ -74,18 +112,16 @@ export function StudioClient({ url }: { url: string }) {
         body: JSON.stringify({
           tokens: extraction.tokens,
           screenshot: extraction.screenshot,
-          brief: "Propón un diseño inspirado en esta web.",
+          brief: briefFromChat,
           language,
         }),
       });
 
-      // Errores estructurados (no-stream) llegan como JSON con 4xx/5xx.
       if (!res.ok || !res.body) {
         const json = await res.json().catch(() => null);
         throw new Error(json?.error?.message ?? "No se pudo generar la propuesta");
       }
 
-      // Consumir el stream NDJSON línea a línea.
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -121,7 +157,7 @@ export function StudioClient({ url }: { url: string }) {
     } finally {
       setGenerating(false);
     }
-  }, [extraction, language]);
+  }, [extraction, briefFromChat, language]);
 
   if (phase === "extracting") {
     return (
@@ -145,87 +181,159 @@ export function StudioClient({ url }: { url: string }) {
     );
   }
 
-  return (
-    <div className="grid flex-1 grid-cols-1 lg:grid-cols-3">
-      <aside className="border-r border-hairline lg:max-h-[calc(100vh)] lg:overflow-hidden">
-        <ExtractionPanel
-          tokens={extraction.tokens}
-          screenshot={extraction.screenshot}
+  const previewArea = proposal ? (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between gap-2 border-b border-hairline p-3">
+        <span className="eyebrow text-body">{proposal.proposal.name}</span>
+        <ProposalActions
+          html={proposal.html}
+          designMd={proposal.designMd}
+          name={proposal.proposal.name}
+          onRegenerate={handleGenerate}
+          disabled={generating}
         />
-      </aside>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <PreviewFrame html={proposal.html} />
+      </div>
+      <details className="border-t border-hairline p-3">
+        <summary className="eyebrow cursor-pointer text-body">DESIGN.md</summary>
+        <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-sm bg-canvas-dark p-3 text-xs text-on-dark">
+          {proposal.designMd}
+        </pre>
+      </details>
+    </div>
+  ) : generating ? (
+    <GenerationProgress partial={partial} seen={seenFields} />
+  ) : (
+    <EmptyPreview errorMsg={errorMsg} />
+  );
 
-      <section className="border-r border-hairline lg:max-h-screen">
-        <ChatPanel tokens={extraction.tokens} />
-      </section>
+  return (
+    <div className="flex flex-1 flex-col">
+      <StudioTopbar
+        url={url}
+        language={language}
+        onLanguageChange={setLanguage}
+        onGenerate={handleGenerate}
+        generating={generating}
+        canGenerate={!!extraction}
+        showExtraction={showExtraction}
+        onToggleExtraction={() => setShowExtraction((v) => !v)}
+      />
 
-      <section className="flex flex-col lg:max-h-screen">
-        <div className="flex items-center justify-between gap-3 border-b border-hairline p-4">
-          <span className="eyebrow text-body">Preview</span>
-          <div className="flex items-center gap-2">
-            <LanguageToggle value={language} onChange={setLanguage} disabled={generating} />
-            <Button onClick={handleGenerate} disabled={generating}>
-              {generating ? "Generando…" : "Generar propuesta"}
-            </Button>
-          </div>
+      {/* Desktop: paneles redimensionables. La extracción es opcional. */}
+      <div className="hidden flex-1 lg:block">
+        <Group
+          orientation="horizontal"
+          className="h-full"
+          key={showExtraction ? "with-extract" : "no-extract"}
+        >
+          {showExtraction && (
+            <>
+              <Panel defaultSize="24%" minSize="16%">
+                <div className="h-full overflow-hidden border-r border-hairline">
+                  <ExtractionPanel
+                    tokens={extraction.tokens}
+                    screenshot={extraction.screenshot}
+                  />
+                </div>
+              </Panel>
+              <ResizeHandle />
+            </>
+          )}
+          <Panel defaultSize={showExtraction ? "28%" : "36%"} minSize="18%">
+            <div className="h-full overflow-hidden border-r border-hairline">
+              <ChatPanel
+                messages={chat.messages}
+                input={chatInput}
+                onInputChange={setChatInput}
+                onSend={handleChatSend}
+                busy={chatBusy}
+              />
+            </div>
+          </Panel>
+          <ResizeHandle />
+          <Panel defaultSize={showExtraction ? "48%" : "64%"} minSize="28%">
+            <div className="h-full overflow-hidden">{previewArea}</div>
+          </Panel>
+        </Group>
+      </div>
+
+      {/* Móvil: pestañas */}
+      <div className="flex flex-1 flex-col lg:hidden">
+        <div className="flex border-b border-hairline">
+          {(
+            [
+              ["extract", "Extracción"],
+              ["chat", "Chat"],
+              ["preview", "Preview"],
+            ] as const
+          ).map(([tab, label]) => (
+            <button
+              key={tab}
+              onClick={() => setMobileTab(tab)}
+              className={`flex-1 py-2 font-mono text-xs uppercase ${
+                mobileTab === tab ? "border-b-2 border-primary text-ink" : "text-body"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <div className="flex-1 overflow-hidden">
-          {proposal ? (
-            <PreviewFrame html={proposal.html} />
-          ) : generating ? (
-            <GenerationProgress partial={partial} seen={seenFields} />
-          ) : (
-            <div className="flex h-full items-center justify-center p-6 text-center text-sm">
-              {errorMsg ? (
-                <span className="text-accent-orange" role="alert">
-                  {errorMsg}
-                </span>
-              ) : (
-                <span className="text-body">
-                  Genera una propuesta para ver el preview en vivo.
-                </span>
-              )}
-            </div>
+          {mobileTab === "extract" && (
+            <ExtractionPanel tokens={extraction.tokens} screenshot={extraction.screenshot} />
           )}
+          {mobileTab === "chat" && (
+            <ChatPanel
+              messages={chat.messages}
+              input={chatInput}
+              onInputChange={setChatInput}
+              onSend={handleChatSend}
+              busy={chatBusy}
+            />
+          )}
+          {mobileTab === "preview" && previewArea}
         </div>
-        {proposal && (
-          <details className="border-t border-hairline p-4">
-            <summary className="eyebrow cursor-pointer text-body">
-              DESIGN.md
-            </summary>
-            <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-sm bg-canvas-dark p-3 text-xs text-on-dark">
-              {proposal.designMd}
-            </pre>
-          </details>
-        )}
-      </section>
+      </div>
     </div>
   );
 }
 
-function LanguageToggle({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: Language;
-  onChange: (l: Language) => void;
-  disabled?: boolean;
-}) {
+function ResizeHandle() {
   return (
-    <div className="flex rounded-sm border border-hairline p-0.5">
-      {(["es", "en"] as const).map((lang) => (
-        <button
-          key={lang}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(lang)}
-          className={`rounded-xs px-2 py-1 font-mono text-xs uppercase transition-colors ${
-            value === lang ? "bg-primary text-on-primary" : "text-body"
-          }`}
-        >
-          {lang}
-        </button>
-      ))}
+    <Separator className="w-1 cursor-col-resize bg-hairline transition-colors hover:bg-accent-periwinkle" />
+  );
+}
+
+function EmptyPreview({ errorMsg }: { errorMsg: string | null }) {
+  if (errorMsg) {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center text-sm">
+        <span className="text-accent-orange" role="alert">
+          {errorMsg}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
+      <ol className="space-y-2 text-sm text-body">
+        <li>
+          <span className="font-mono text-ink">1 ·</span> Revisa el diseño extraído
+        </li>
+        <li>
+          <span className="font-mono text-ink">2 ·</span> Refina en el chat (opcional)
+        </li>
+        <li>
+          <span className="font-mono text-ink">3 ·</span> Pulsa{" "}
+          <span className="font-mono uppercase text-ink">Generar propuesta</span>
+        </li>
+      </ol>
+      <p className="max-w-xs text-xs text-body">
+        El preview de tu diseño nuevo aparecerá aquí.
+      </p>
     </div>
   );
 }

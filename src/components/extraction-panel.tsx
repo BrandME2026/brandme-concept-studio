@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { DesignTokens } from "@/types/design";
+import { ScreenshotModal } from "./screenshot-modal";
 
 export function ExtractionPanel({
   tokens,
@@ -9,33 +11,48 @@ export function ExtractionPanel({
   tokens: DesignTokens;
   screenshot: string;
 }) {
+  const [zoomed, setZoomed] = useState(false);
+
   return (
     <div className="flex flex-col gap-6 overflow-y-auto p-5">
       <div>
         <span className="eyebrow text-body">Extracción</span>
-        <h2 className="mt-1 text-xl font-medium tracking-tight">
+        <h2 className="mt-1 text-lg font-medium leading-snug tracking-tight">
           {tokens.meta.title || tokens.meta.url}
         </h2>
       </div>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={screenshot}
-        alt="Captura de la web de referencia"
-        className="w-full rounded-sm border border-hairline"
-      />
+      <button
+        type="button"
+        onClick={() => setZoomed(true)}
+        className="group relative overflow-hidden rounded-sm border border-hairline"
+        aria-label="Ampliar captura"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={screenshot} alt="Captura de la web de referencia" className="w-full" />
+        <span className="absolute bottom-2 right-2 rounded-xs bg-canvas-dark/80 px-2 py-0.5 font-mono text-[10px] uppercase text-on-dark opacity-0 transition-opacity group-hover:opacity-100">
+          Ampliar
+        </span>
+      </button>
 
       <section>
         <span className="eyebrow text-body">Paleta</span>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 grid grid-cols-2 gap-2">
           {tokens.colors.palette.map((c) => (
-            <div key={c.value} className="flex flex-col items-center gap-1">
+            <div
+              key={c.value}
+              className="flex items-center gap-2 rounded-sm border border-hairline p-1.5"
+            >
               <span
-                className="h-10 w-10 rounded-sm border border-hairline"
+                className="h-7 w-7 flex-shrink-0 rounded-xs border border-hairline"
                 style={{ backgroundColor: c.value }}
-                title={`${c.value} · ${c.roles.join(", ")}`}
               />
-              <code className="text-[10px] text-body">{c.value}</code>
+              <div className="min-w-0">
+                <code className="block text-xs text-ink">{c.value}</code>
+                <span className="block truncate font-mono text-[10px] uppercase text-body">
+                  {c.roles.join(" · ")}
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -43,11 +60,13 @@ export function ExtractionPanel({
 
       <section>
         <span className="eyebrow text-body">Tipografía</span>
-        <ul className="mt-2 space-y-1 text-sm">
+        <ul className="mt-2 space-y-1.5 text-sm">
           {tokens.typography.fontFamilies.slice(0, 4).map((f) => (
-            <li key={f.family} className="flex justify-between">
-              <span style={{ fontFamily: f.family }}>{f.family}</span>
-              <span className="font-mono text-xs uppercase text-body">
+            <li key={f.family} className="flex items-center justify-between gap-2">
+              <span className="truncate" style={{ fontFamily: f.family }}>
+                {f.family}
+              </span>
+              <span className="flex-shrink-0 rounded-xs bg-hairline px-1.5 py-0.5 font-mono text-[10px] uppercase text-body">
                 {f.role}
               </span>
             </li>
@@ -61,6 +80,14 @@ export function ExtractionPanel({
           {tokens.spacing.common.map((s) => `${s}px`).join(" · ")}
         </p>
       </section>
+
+      {zoomed && (
+        <ScreenshotModal
+          src={screenshot}
+          alt="Captura ampliada de la web"
+          onClose={() => setZoomed(false)}
+        />
+      )}
     </div>
   );
 }
