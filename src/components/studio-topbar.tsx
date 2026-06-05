@@ -14,6 +14,8 @@ export function StudioTopbar({
   canGenerate,
   showExtraction,
   onToggleExtraction,
+  quality,
+  onQualityChange,
 }: {
   url: string;
   language: Language;
@@ -23,6 +25,8 @@ export function StudioTopbar({
   canGenerate: boolean;
   showExtraction: boolean;
   onToggleExtraction: () => void;
+  quality: "rapido" | "alta";
+  onQualityChange: (q: "rapido" | "alta") => void;
 }) {
   let host = url;
   try {
@@ -60,6 +64,7 @@ export function StudioTopbar({
         >
           {showExtraction ? "Ocultar diseño extraído" : "Ver diseño extraído"}
         </button>
+        <QualityToggle value={quality} onChange={onQualityChange} disabled={generating} />
         <LanguageToggle
           value={language}
           onChange={onLanguageChange}
@@ -95,6 +100,41 @@ function LanguageToggle({
           }`}
         >
           {lang}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function QualityToggle({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: "rapido" | "alta";
+  onChange: (q: "rapido" | "alta") => void;
+  disabled?: boolean;
+}) {
+  const opts: { id: "rapido" | "alta"; label: string }[] = [
+    { id: "rapido", label: "Rápido" },
+    { id: "alta", label: "Alta" },
+  ];
+  return (
+    <div
+      className="flex rounded-sm border border-hairline p-0.5"
+      title="Calidad de generación: Rápido (Sonnet) o Alta (GPT-5.5)"
+    >
+      {opts.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(o.id)}
+          className={`rounded-xs px-2 py-1 font-mono text-xs uppercase transition-colors ${
+            value === o.id ? "bg-primary text-on-primary" : "text-body"
+          }`}
+        >
+          {o.label}
         </button>
       ))}
     </div>

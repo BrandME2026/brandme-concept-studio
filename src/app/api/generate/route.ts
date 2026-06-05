@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { streamObject } from "ai";
 import { z } from "zod";
-import { designModel, assertOpenRouterConfigured } from "@/lib/ai/openrouter";
+import { getDesignModel, assertOpenRouterConfigured } from "@/lib/ai/openrouter";
 import { generateSystemPrompt } from "@/lib/ai/prompts";
 import { buildGenerateMessages } from "@/lib/ai/build-messages";
-import { designProposalSchema, tokensSchema } from "@/lib/schemas";
+import { designProposalSchema, tokensSchema, QUALITY_VALUES } from "@/lib/schemas";
 import { serializeDesignMd } from "@/lib/ai/design-md";
 import { injectImages } from "@/lib/preview/inject-images";
 import type { DesignTokens } from "@/types/design";
@@ -19,6 +19,8 @@ const generateBodySchema = z.object({
   language: z.enum(["es", "en"]).default("es"),
   // Imágenes del usuario (data URLs) para incrustar en el diseño generado.
   images: z.array(z.string()).max(6).default([]),
+  // Calidad/modelo (allowlist); "alta" = GPT-5.5.
+  quality: z.enum(QUALITY_VALUES).default("alta"),
 });
 
 /**
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
   }
 
   const tokens = parsed.data.tokens as unknown as DesignTokens;
-  const { screenshot, brief, language, images } = parsed.data;
+  const { screenshot, brief, language, images, quality } = parsed.data;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
 
       try {
         const result = streamObject({
-          model: designModel,
+          model: getDesignModel(quality),
           schema: designProposalSchema,
           system: generateSystemPrompt(language, images.length),
           messages: buildGenerateMessages(tokens, screenshot, brief, images),

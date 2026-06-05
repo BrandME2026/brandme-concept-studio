@@ -34,22 +34,35 @@ export function generateSystemPrompt(
       : `\n- Para imágenes decorativas usa bloques de color o gradientes con Tailwind; NO enlaces a
   imágenes externas que podrían no cargar.`;
 
-  return `Eres un diseñador de sistemas y desarrollador front-end senior.
+  return `Eres un diseñador de sistemas y desarrollador front-end senior, experto en webs
+"vivas" estilo Awwwards (animaciones y micro-interacciones premium).
 Genera una propuesta de diseño NUEVA inspirada en la web de referencia (tokens + screenshot
 + la conversación previa). NO es una copia: es una interpretación con identidad propia.
 
-Debes producir dos cosas:
+Debes producir:
 1. Un design system en formato DESIGN.md (lo serializa el sistema a partir de tu salida estructurada).
-2. Una landing page de ejemplo en HTML con clases de Tailwind CSS (sin <html>/<head>/<body>;
-   solo el contenido del body), que demuestre el sistema: hero, sección de features y footer.
+2. Una landing page de ejemplo en HTML con Tailwind + ANIMACIONES (sin <html>/<head>/<body>; solo el
+   contenido del body): nav, hero, sección de features, una sección con stats/contadores, y footer.
+3. Un resumen (campo "interactions") de las animaciones e interacciones que incluiste.
 
-REGLAS DEL HTML:
-- Solo Tailwind utility classes (se cargará Tailwind por CDN). Nada de <style> ni CSS externo.
-- Usa los colores como valores arbitrarios cuando haga falta: bg-[#010120], text-[#fc4c02], etc.
-- Diseño responsive, accesible, jerarquía clara.
-- IMPORTANTE: TODOS los textos del HTML y la descripción/principios del design system
-  deben estar en ${lang}. No mezcles idiomas.
-- NO copies textos de marca de la referencia; inventa copy genérico de ejemplo.${imagesRule}`;
+El iframe del preview YA carga por CDN: Tailwind, GSAP, ScrollTrigger y AOS. ÚSALOS.
+
+REGLAS DEL HTML (web viva):
+- Solo Tailwind utility classes para estilos. Nada de <style> ni CSS externo. Colores como valores
+  arbitrarios cuando haga falta: bg-[#010120], text-[#fc4c02], etc.
+- ANIMACIONES DE ENTRADA: añade atributos AOS a secciones/tarjetas, ej:
+  data-aos="fade-up" data-aos-delay="100". Escalona los delays para un efecto en cascada.
+- GSAP/ScrollTrigger: pon TODO el JavaScript dentro de una función global:
+  <script>window.__init__ = function () { /* gsap.from(...), ScrollTrigger, etc. */ }<\/script>
+  El runtime la ejecuta tras cargar las librerías. Anima el hero (gsap.from con y/opacity),
+  un parallax suave y contadores numéricos en la sección de stats.
+- COMPONENTES FUNCIONALES con JS vanilla dentro de __init__ o con onclick: menú móvil (hamburguesa
+  que abre/cierra), y al menos uno de: tabs, acordeón o carrusel. Deben responder de verdad al clic.
+- Micro-interacciones: hover (hover:scale-105, transiciones), estados de foco visibles.
+- Responsive (mobile-first), accesible (aria donde aplique), jerarquía clara.
+- IMPORTANTE: TODOS los textos y la descripción/principios deben estar en ${lang}. No mezcles idiomas.
+- NO copies textos de marca de la referencia; inventa copy genérico de ejemplo.${imagesRule}
+- Si defines <script>, usa SIEMPRE window.__init__ (no scripts sueltos que corran antes de las libs).`;
 }
 
 /** Bloque de contexto con los tokens, para el primer turno y la generación. */

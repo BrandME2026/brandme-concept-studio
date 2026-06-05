@@ -44,11 +44,20 @@ export const designProposalSchema = z.object({
   html: z
     .string()
     .describe(
-      "Contenido del body de una landing de ejemplo con clases Tailwind (sin html/head/body)",
+      "Contenido del body de una landing VIVA con Tailwind + animaciones (sin html/head/body). " +
+        "Incluye atributos data-aos, animaciones GSAP y componentes interactivos dentro de window.__init__.",
+    ),
+  interactions: z
+    .string()
+    .describe(
+      "Resumen breve en lenguaje natural de las animaciones e interacciones incluidas (ej: 'hero con fade GSAP, secciones con scroll-reveal, menú móvil y tabs funcionales').",
     ),
 });
 
 export type DesignProposal = z.infer<typeof designProposalSchema>;
+
+/** Calidad de generación seleccionable en la UI. */
+export const QUALITY_VALUES = ["rapido", "alta"] as const;
 
 /**
  * Validación laxa de los DesignTokens entrantes en /api/generate.

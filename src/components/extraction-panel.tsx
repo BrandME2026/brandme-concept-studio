@@ -61,8 +61,8 @@ export function ExtractionPanel({
       <section>
         <span className="eyebrow text-body">Tipografía</span>
         <ul className="mt-2 space-y-1.5 text-sm">
-          {tokens.typography.fontFamilies.slice(0, 4).map((f) => (
-            <li key={f.family} className="flex items-center justify-between gap-2">
+          {tokens.typography.fontFamilies.slice(0, 4).map((f, i) => (
+            <li key={`${f.family}-${f.role}-${i}`} className="flex items-center justify-between gap-2">
               <span className="truncate" style={{ fontFamily: f.family }}>
                 {f.family}
               </span>

@@ -2,16 +2,28 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
 const apiKey = process.env.OPENROUTER_API_KEY;
 
-const DEFAULT_MODEL =
-  process.env.OPENROUTER_DEFAULT_MODEL ?? "anthropic/claude-sonnet-4.6";
+// Modelo por defecto: GPT-5.5 (1º del benchmark frontend 2026).
+const DEFAULT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL ?? "openai/gpt-5.5";
 
+// Fallbacks ordenados por benchmark de diseño (Opus 4.7 > Sonnet 4.6 > Gemini 3.1 Pro).
 const FALLBACK_MODELS = (
   process.env.OPENROUTER_FALLBACK_MODELS ??
-  "google/gemini-2.5-flash,openai/gpt-4o"
+  "anthropic/claude-opus-4.7,anthropic/claude-sonnet-4.6,google/gemini-3.1-pro-preview"
 )
   .split(",")
   .map((m) => m.trim())
   .filter(Boolean);
+
+/**
+ * Modelos seleccionables desde la UI (allowlist). "alta" = mejor benchmark de
+ * diseño; "rapido" = balance calidad/coste/latencia.
+ */
+export const QUALITY_MODELS = {
+  alta: "openai/gpt-5.5",
+  rapido: "anthropic/claude-sonnet-4.6",
+} as const;
+
+export type Quality = keyof typeof QUALITY_MODELS;
 
 const openrouter = createOpenRouter({
   apiKey,
@@ -22,21 +34,17 @@ const openrouter = createOpenRouter({
 });
 
 /**
- * Modelo multimodal con fallbacks automáticos de OpenRouter: si el primario falla,
- * enruta al siguiente del array `models`.
+ * Devuelve un modelo (con fallbacks automáticos de OpenRouter) para la calidad pedida.
+ * El primario es el de la calidad; el resto del fallback se mantiene como respaldo.
  */
-export const designModel = openrouter(DEFAULT_MODEL, {
-  extraBody: { models: [DEFAULT_MODEL, ...FALLBACK_MODELS] },
-});
+export function getDesignModel(quality: Quality = "alta") {
+  const primary = QUALITY_MODELS[quality] ?? DEFAULT_MODEL;
+  const models = [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)];
+  return openrouter(primary, { extraBody: { models } });
+}
 
-/**
- * Variante con reasoning tokens habilitados: el modelo expone su razonamiento,
- * que streameamos para mostrar "qué piensa el agente" mientras genera.
- */
-export const designModelWithReasoning = openrouter(DEFAULT_MODEL, {
-  extraBody: { models: [DEFAULT_MODEL, ...FALLBACK_MODELS] },
-  reasoning: { enabled: true, effort: "low" },
-});
+/** Modelo por defecto (alta calidad) para usos que no eligen calidad. */
+export const designModel = getDesignModel("alta");
 
 export function assertOpenRouterConfigured() {
   if (!apiKey) {

@@ -46,6 +46,7 @@ export function StudioClient({ url }: { url: string }) {
   // importa el resultado, no los tokens. Se muestra bajo demanda.
   const [showExtraction, setShowExtraction] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [quality, setQuality] = useState<"rapido" | "alta">("alta");
 
   // Chat elevado: sus mensajes alimentan el brief de la generación.
   const chat = useChat({
@@ -117,6 +118,7 @@ export function StudioClient({ url }: { url: string }) {
           brief: briefFromChat,
           language,
           images,
+          quality,
         }),
       });
 
@@ -160,7 +162,7 @@ export function StudioClient({ url }: { url: string }) {
     } finally {
       setGenerating(false);
     }
-  }, [extraction, briefFromChat, language, images]);
+  }, [extraction, briefFromChat, language, images, quality]);
 
   if (phase === "extracting") {
     return <ExtractionLoading url={url} />;
@@ -190,6 +192,12 @@ export function StudioClient({ url }: { url: string }) {
       <div className="flex-1 overflow-hidden">
         <PreviewFrame html={proposal.html} />
       </div>
+      {proposal.proposal.interactions && (
+        <div className="border-t border-hairline px-3 py-2">
+          <span className="eyebrow text-body">Incluye</span>
+          <p className="mt-0.5 text-xs text-body">{proposal.proposal.interactions}</p>
+        </div>
+      )}
       <details className="border-t border-hairline p-3">
         <summary className="eyebrow cursor-pointer text-body">DESIGN.md</summary>
         <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-sm bg-canvas-dark p-3 text-xs text-on-dark">
@@ -214,6 +222,8 @@ export function StudioClient({ url }: { url: string }) {
         canGenerate={!!extraction}
         showExtraction={showExtraction}
         onToggleExtraction={() => setShowExtraction((v) => !v)}
+        quality={quality}
+        onQualityChange={setQuality}
       />
 
       {/* Desktop: chat + preview redimensionables. Extracción va en un drawer overlay. */}
