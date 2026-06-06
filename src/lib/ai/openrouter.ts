@@ -46,10 +46,10 @@ export function getDesignModel(quality: Quality = "alta") {
 /** Modelo por defecto (alta calidad) para usos que no eligen calidad. */
 export const designModel = getDesignModel("alta");
 
-// Activa los reasoning tokens de OpenRouter (chain-of-thought del modelo) para que
-// la generación pueda mostrar "qué piensa el agente" en vivo. `effort` configurable
-// por env var; el resto de tareas (chat/resolve) NO lo activan para no gastar tokens.
-const REASONING_EFFORT = (process.env.OPENROUTER_REASONING_EFFORT ?? "medium") as
+// Reasoning tokens de OpenRouter (chain-of-thought) para narrar "qué piensa el agente".
+// Default 'low': para GENERAR HTML, un reasoning extenso dispara la latencia (minutos)
+// sin mejorar proporcionalmente el resultado. Configurable por env si se quiere más.
+const REASONING_EFFORT = (process.env.OPENROUTER_REASONING_EFFORT ?? "low") as
   | "xhigh"
   | "high"
   | "medium"
