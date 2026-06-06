@@ -16,7 +16,7 @@ interface GalleryItem {
 }
 
 /** Galería de páginas REALES generadas (del historial). Agrupadas por categoría inferida. */
-export function Gallery({ showHeading = true }: { showHeading?: boolean } = {}) {
+export function Gallery() {
   const t = useT();
   const [items, setItems] = useState<GalleryItem[] | null>(null);
 
@@ -36,13 +36,11 @@ export function Gallery({ showHeading = true }: { showHeading?: boolean } = {}) 
   return (
     <section id="gallery" className="bg-canvas px-6 py-section md:px-8">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-12">
-        {showHeading && (
-          <SectionHeading
-            eyebrowKey="ll.gallery.eyebrow"
-            titleKey="ll.gallery.title"
-            introKey="ll.gallery.intro"
-          />
-        )}
+        <SectionHeading
+          eyebrowKey="ll.gallery.eyebrow"
+          titleKey="ll.gallery.title"
+          introKey="ll.gallery.intro"
+        />
 
         {items === null && (
           <p className="text-sm text-body">{t("ll.gallery.loading")}</p>
