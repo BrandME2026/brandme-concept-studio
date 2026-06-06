@@ -102,6 +102,10 @@ body {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 
 @utility animate-float {
   animation: float 3s ease-in-out infinite;
@@ -118,6 +122,9 @@ body {
 @utility animate-msg {
   animation: msg-in 0.35s ease-out both;
 }
+@utility animate-slide-in-right {
+  animation: slide-in-right 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 
 /* El número de cada paso pulsa secuencialmente (delay inline por paso) */
 .animate-step > span:first-child {
@@ -130,6 +137,7 @@ body {
   .animate-fade,
   .animate-scale,
   .animate-msg,
+  .animate-slide-in-right,
   .animate-step > span:first-child {
     animation: none;
   }

@@ -444,46 +444,61 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
     </div>
   );
 
+  // El panel del artifact SOLO aparece cuando hay algo que mostrar (web generada,
+  // guardada o en construcción). Si no, el chat ocupa toda la pantalla.
+  const hasArtifact = Boolean(gen.proposal || savedPage || gen.generating || launching);
+
   return (
     <div className="flex h-full flex-1">
       <ConversationSidebar activeId={convId} onNew={handleNew} />
 
-      {/* Desktop: chat | artifact redimensionables */}
+      {/* Desktop: chat solo (full) hasta que haya web → entonces split con el panel */}
       <div className="hidden min-h-0 flex-1 lg:flex">
-        <Group orientation="horizontal" className="h-full w-full">
-          <Panel defaultSize="40%" minSize="28%">
-            <div className="h-full overflow-hidden border-r border-hairline">{chatPanel}</div>
-          </Panel>
-          <Separator className="w-1 cursor-col-resize bg-hairline transition-colors hover:bg-accent-periwinkle" />
-          <Panel defaultSize="60%" minSize="30%">
-            <div className="h-full overflow-hidden">{artifactPanel}</div>
-          </Panel>
-        </Group>
+        {hasArtifact ? (
+          <Group orientation="horizontal" className="h-full w-full">
+            <Panel defaultSize="40%" minSize="28%">
+              <div className="h-full overflow-hidden border-r border-hairline">{chatPanel}</div>
+            </Panel>
+            <Separator className="w-1 cursor-col-resize bg-hairline transition-colors hover:bg-accent-periwinkle" />
+            <Panel defaultSize="60%" minSize="30%">
+              {/* Entrada animada del panel cuando empieza a construirse la web */}
+              <div className="h-full animate-slide-in-right overflow-hidden">{artifactPanel}</div>
+            </Panel>
+          </Group>
+        ) : (
+          <div className="h-full w-full">{chatPanel}</div>
+        )}
       </div>
 
-      {/* Móvil: tabs */}
+      {/* Móvil: chat full hasta que haya web → entonces tabs chat/preview */}
       <div className="flex min-h-0 flex-1 flex-col lg:hidden">
-        <div className="flex border-b border-hairline">
-          {(
-            [
-              ["chat", t("studio.tab.chat")],
-              ["preview", t("studio.tab.preview")],
-            ] as const
-          ).map(([tab, label]) => (
-            <button
-              key={tab}
-              onClick={() => setMobileTab(tab)}
-              className={`flex-1 py-2 font-mono text-xs uppercase ${
-                mobileTab === tab ? "border-b-2 border-primary text-ink" : "text-body"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1 overflow-hidden">
-          {mobileTab === "chat" ? chatPanel : artifactPanel}
-        </div>
+        {hasArtifact ? (
+          <>
+            <div className="flex border-b border-hairline">
+              {(
+                [
+                  ["chat", t("studio.tab.chat")],
+                  ["preview", t("studio.tab.preview")],
+                ] as const
+              ).map(([tab, label]) => (
+                <button
+                  key={tab}
+                  onClick={() => setMobileTab(tab)}
+                  className={`flex-1 py-2 font-mono text-xs uppercase ${
+                    mobileTab === tab ? "border-b-2 border-primary text-ink" : "text-body"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {mobileTab === "chat" ? chatPanel : artifactPanel}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 overflow-hidden">{chatPanel}</div>
+        )}
       </div>
     </div>
   );
