@@ -12,22 +12,28 @@ export function getPool(): Pool {
     if (!connectionString) {
       throw new Error("DATABASE_URL no configurada");
     }
-    // En Railway usamos la URL PRIVADA (DATABASE_URL apunta a la red interna
-    // *.railway.internal, no expuesta a internet → sin riesgo de MITM). Para esa
-    // red Railway emite certs autofirmados; si se provee un CA, se verifica.
-    const isLocal =
-      connectionString.includes("localhost") ||
-      connectionString.includes("127.0.0.1");
+    const host = (() => {
+      try {
+        return new URL(connectionString).hostname;
+      } catch {
+        return "";
+      }
+    })();
+    const isLocal = host === "localhost" || host === "127.0.0.1";
+    // La red privada de Railway (*.railway.internal) no sale a internet → sin
+    // superficie MITM; ahí Railway usa certs autofirmados. Para cualquier otro
+    // host exigimos verificación TLS real (CA del sistema o DATABASE_CA_CERT);
+    // así no deshabilitamos TLS en conexiones públicas.
+    const isRailwayInternal = host.endsWith(".railway.internal");
     const ca = process.env.DATABASE_CA_CERT;
-    pool = new Pool({
-      connectionString,
-      ssl: isLocal
-        ? undefined
-        : ca
-          ? { ca, rejectUnauthorized: true }
-          : { rejectUnauthorized: false }, // red privada Railway (sin CA público)
-      max: 5,
-    });
+
+    let ssl: false | { ca?: string; rejectUnauthorized: boolean } | undefined;
+    if (isLocal) ssl = undefined;
+    else if (ca) ssl = { ca, rejectUnauthorized: true };
+    else if (isRailwayInternal) ssl = { rejectUnauthorized: false };
+    else ssl = { rejectUnauthorized: true }; // host público → verificar con CA del sistema
+
+    pool = new Pool({ connectionString, ssl, max: 5 });
   }
   return pool;
 }
