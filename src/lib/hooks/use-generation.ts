@@ -12,6 +12,8 @@ interface Proposal {
   slug?: string | null;
   brand?: string | null;
   city?: string | null;
+  /** true si el servidor reusó una página existente (marca+ciudad ya generada). */
+  duplicate?: boolean;
 }
 
 interface GenerateInput {
@@ -63,6 +65,24 @@ export function useGeneration() {
       });
       if (!res.ok || !res.body) {
         const json = await res.json().catch(() => null);
+        throw new Error(json?.error?.message ?? "No se pudo generar la propuesta");
+      }
+
+      // Anti-duplicado: el servidor responde JSON (no stream) si la marca+ciudad ya
+      // existe. En ese caso devolvemos el slug existente para que el llamador redirija.
+      if (res.headers.get("content-type")?.includes("application/json")) {
+        const json = await res.json().catch(() => null);
+        if (json?.data?.duplicate && json.data.slug) {
+          const dup: Proposal = {
+            proposal: null as unknown as DesignProposal,
+            designMd: "",
+            html: "",
+            slug: json.data.slug,
+            duplicate: true,
+          };
+          setProposal(dup);
+          return dup;
+        }
         throw new Error(json?.error?.message ?? "No se pudo generar la propuesta");
       }
 

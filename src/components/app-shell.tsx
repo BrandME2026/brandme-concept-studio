@@ -165,6 +165,11 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
             positioning: ctx.positioning,
           },
         });
+        // Anti-duplicado: el servidor reusó una página existente (marca+ciudad ya
+        // generada). No persistimos otra; señalamos el slug para mostrar la existente.
+        if (proposal?.duplicate && proposal.slug) {
+          return { ok: true as const, duplicate: true as const, slug: proposal.slug };
+        }
         if (proposal) {
           void persist([], {
             url,
@@ -235,11 +240,16 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               "needsUrl" in out && out.needsUrl && !ctx.url
                 ? t("hc.askUrl", { brand: ctx.brand }) // pide la URL UNA vez
                 : t("hc.genFailed"); // ya falló con URL: no reintentar, disculparse
+          } else if ("duplicate" in out && out.duplicate) {
+            // Ya existía: no regeneramos. El agente avisa y enlaza la existente.
+            message = t("hc.duplicate", { brand: ctx.brand });
           }
           chat.addToolOutput({
             tool: "launchBrand",
             toolCallId: toolCall.toolCallId,
-            output: out.ok ? { ok: true } : { ok: false, message },
+            output: out.ok
+              ? { ok: true, ...("duplicate" in out && out.duplicate ? { duplicate: true, slug: out.slug, message } : {}) }
+              : { ok: false, message },
           });
         })();
       } else if (toolCall.toolName === "refineDesign") {

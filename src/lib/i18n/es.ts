@@ -163,6 +163,7 @@ export const es = {
   "hc.resolveFailed": "No identifiqué la web oficial de {brand}. ¿Me pasas la URL?",
   "hc.askUrl": "No pude identificar la web oficial de {brand}. Pídele al usuario la URL oficial (ej. https://...) y vuelve a llamar launchBrand con ese campo url. NO reintentes sin la URL.",
   "hc.genFailed": "No se pudo generar la página esta vez. Discúlpate brevemente y ofrece reintentar más tarde. NO vuelvas a llamar la herramienta automáticamente.",
+  "hc.duplicate": "Ya existe una web para {brand} en esa ciudad. Avisa al usuario de que no se duplica y ofrece mostrarle la que ya hay. NO vuelvas a llamar la herramienta.",
   "hc.artifactEmpty": "Tu página aparecerá aquí en cuanto la generemos.",
 
   // Sidebar de conversaciones

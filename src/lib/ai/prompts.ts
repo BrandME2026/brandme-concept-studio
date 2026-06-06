@@ -93,6 +93,23 @@ export interface SeoContext {
   positioning?: string;
 }
 
+// Ángulos de layout/estructura para diversificar. Cada generación toma uno (por marca)
+// para que dos páginas distintas NO compartan el mismo esqueleto visual. Determinista.
+const LAYOUT_VARIANTS = [
+  "hero a pantalla completa con imagen/gradiente dominante y CTA centrado; stats en banda horizontal.",
+  "hero dividido (texto izquierda, visual derecha); features en grid de 3 columnas con iconos.",
+  "hero editorial con tipografía grande y mínima; secciones alternando fondo claro/oscuro (zig-zag).",
+  "hero con tarjeta flotante y prueba social arriba; features en formato acordeón o tabs.",
+  "hero compacto con vídeo/parallax de fondo; recorrido en timeline vertical con scroll-trigger.",
+] as const;
+
+/** Selecciona un ángulo de layout estable a partir de una semilla textual (marca+ciudad). */
+function pickLayoutVariant(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return LAYOUT_VARIANTS[h % LAYOUT_VARIANTS.length];
+}
+
 export function generateSystemPrompt(
   language: Language = "es",
   imageCount = 0,
@@ -127,6 +144,10 @@ REGLAS SEO ON-PAGE (la página debe posicionar en búsqueda local):
   este marcador como src: <img src="{{LOGO}}" alt="logo" class="h-8 w-auto" />. NO pongas una inicial
   en un cuadro de color ni inventes un logo cuando este marcador esté disponible.`
     : "";
+  // Diversificación: ángulo de estructura distinto por marca, para que no salgan clónicas.
+  const variantSeed = `${seo.brand ?? ""}|${seo.city ?? ""}`;
+  const variantRule = `\n- ESTRUCTURA DE ESTA PÁGINA (síguela para que tenga identidad propia y no sea genérica):
+  ${pickLayoutVariant(variantSeed)}`;
 
   return `Eres un diseñador de sistemas y desarrollador front-end senior, experto en webs
 "vivas" estilo Awwwards (animaciones y micro-interacciones premium).
@@ -157,7 +178,7 @@ REGLAS DEL HTML (web viva):
 - IMPORTANTE: TODOS los textos y la descripción/principios deben estar en ${lang}. No mezcles idiomas.
 - NO copies el diseño pixel a pixel de la referencia; es una interpretación con identidad propia.
   Pero el COPY sí debe ser específico y real de la marca y el mercado (ver datos abajo), no genérico.${imagesRule}${logoRule}
-- Si defines <script>, usa SIEMPRE window.__init__ (no scripts sueltos que corran antes de las libs).${brandLine}${seoRule}`;
+- Si defines <script>, usa SIEMPRE window.__init__ (no scripts sueltos que corran antes de las libs).${variantRule}${brandLine}${seoRule}`;
 }
 
 /** Bloque de contexto con los tokens, para el primer turno y la generación. */

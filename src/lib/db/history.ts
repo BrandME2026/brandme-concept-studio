@@ -154,6 +154,29 @@ export async function getPublicGenerationBySlug(slug: string): Promise<{
   return rows[0] ?? null;
 }
 
+/**
+ * Busca una generación existente por marca (+ ciudad opcional), sin filtrar por sesión.
+ * Anti-duplicado: si ya existe la misma marca+ciudad, reusamos esa página en vez de
+ * generar otra clónica. Comparación normalizada (lower+trim) para que "McDonald's" y
+ * "mcdonald's" cuenten igual. city NULL ⇒ coincide solo con registros sin ciudad.
+ */
+export async function findGenerationByBrandCity(
+  brand: string,
+  city: string | null,
+): Promise<{ id: string; slug: string | null } | null> {
+  await ensureSchema();
+  const b = brand.trim().toLowerCase();
+  const c = city?.trim().toLowerCase() ?? null;
+  const { rows } = await getPool().query<{ id: string; slug: string | null }>(
+    `SELECT id, slug FROM generations
+     WHERE lower(trim(brand)) = $1
+       AND ( (city IS NULL AND $2::text IS NULL) OR lower(trim(city)) = $2 )
+     ORDER BY created_at ASC LIMIT 1`,
+    [b, c],
+  );
+  return rows[0] ?? null;
+}
+
 /** Cuenta todas las generaciones (stat real "brands in registry"). */
 export async function countAllGenerations(): Promise<number> {
   await ensureSchema();

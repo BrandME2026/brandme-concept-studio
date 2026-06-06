@@ -12,7 +12,7 @@ import { designProposalSchema, tokensSchema, QUALITY_VALUES } from "@/lib/schema
 import { serializeDesignMd } from "@/lib/ai/design-md";
 import { injectImages } from "@/lib/preview/inject-images";
 import { getSessionId } from "@/lib/session";
-import { saveGeneration } from "@/lib/db/history";
+import { saveGeneration, findGenerationByBrandCity } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
 import { slugify } from "@/lib/seo/slug";
 import type { DesignTokens } from "@/types/design";
@@ -81,6 +81,28 @@ export async function POST(req: Request) {
   // Sesión para el historial (cookie); se lee aquí, fuera del stream.
   const sessionId = await getSessionId();
   const sourceUrl = tokens?.meta?.url ?? "";
+
+  // Anti-duplicado (antes de gastar tokens del LLM): si ya existe una página para
+  // esta marca+ciudad, la reusamos en vez de generar otra clónica. Determinista.
+  const dupBrand = seo?.brand?.trim();
+  if (isDbConfigured() && dupBrand) {
+    try {
+      const existing = await findGenerationByBrandCity(dupBrand, seo?.city?.trim() ?? null);
+      if (existing?.slug) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            duplicate: true,
+            slug: existing.slug,
+            message: "Ya existe una web para esta marca y ciudad.",
+          },
+        });
+      }
+    } catch (e) {
+      // Si el check falla, no bloqueamos la generación (degradación elegante).
+      console.error("[generate] check de duplicado falló", e);
+    }
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
