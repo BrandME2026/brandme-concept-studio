@@ -10,15 +10,15 @@ FROM base AS deps
 WORKDIR /app
 # minimumReleaseAge: 0 va en pnpm-workspace.yaml (el lockfile fija versiones ya verificadas;
 # el cooldown supply-chain bloquearía el install reproducible).
-# Reintentos de red robustos en vez de un timeout gigante (que cuelga el builder si un
-# paquete tarda). Cache de pnpm montada para acelerar reinstalaciones.
+# Reintentos de red robustos en vez de un timeout gigante (que colgaba el builder de
+# Railway si un paquete tardaba). Sin cache mount (Railway exige cacheKey en el id).
 ENV npm_config_fetch_retries=5 \
     npm_config_fetch_retry_factor=2 \
     npm_config_fetch_retry_mintimeout=10000 \
-    npm_config_fetch_retry_maxtimeout=60000
+    npm_config_fetch_retry_maxtimeout=60000 \
+    npm_config_network_concurrency=8
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # ─── Build ───
 FROM base AS builder
