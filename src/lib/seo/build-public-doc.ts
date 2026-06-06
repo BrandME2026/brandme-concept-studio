@@ -3,6 +3,10 @@
  * A diferencia de build-srcdoc (iframe del preview), este se SIRVE como documento
  * propio (route handler) con <head> SEO real: meta, canonical, OG, JSON-LD.
  * El <body> es el HTML generado por el LLM (ya con {{IMG}}/{{LOGO}} sustituidos).
+ *
+ * SEGURIDAD: el route handler sirve este documento con cabecera
+ * `Content-Security-Policy: sandbox allow-scripts` → origen opaco, los scripts del
+ * HTML del LLM NO acceden a cookies/storage de la app.
  */
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -14,6 +18,16 @@ function esc(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/**
+ * Escapa una cadena JSON para incrustarla en un <script>: neutraliza los chars que
+ * podrían cerrar el tag (`<`, `>`, `&`) o romper el parser (U+2028/U+2029).
+ */
+function escapeJsonForScript(json: string): string {
+  return json.replace(/[<>&\u2028\u2029]/g, (c) =>
+    "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"),
+  );
 }
 
 export interface PublicDocMeta {
@@ -37,14 +51,16 @@ export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
   const ogImage = meta.screenshot && meta.screenshot.startsWith("http") ? meta.screenshot : "";
 
   // JSON-LD LocalBusiness con marca + ciudad (ayuda a Google a entender la página).
-  const jsonLd = JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    name: meta.brand || title,
-    description,
-    url: canonical,
-    ...(meta.city ? { areaServed: meta.city } : {}),
-  });
+  const jsonLd = escapeJsonForScript(
+    JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      name: meta.brand || title,
+      description,
+      url: canonical,
+      ...(meta.city ? { areaServed: meta.city } : {}),
+    }),
+  );
 
   return `<!doctype html>
 <html lang="${lang}">

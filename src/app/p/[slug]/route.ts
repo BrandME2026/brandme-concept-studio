@@ -6,8 +6,11 @@ import { buildPublicDoc, type PublicDocMeta } from "@/lib/seo/build-public-doc";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// CSP: el contenido lo genera nuestro pipeline (no terceros), pero corre en el origen.
-// Acotamos qué se puede cargar/ejecutar. 'unsafe-inline' es necesario para window.__init__.
+// CSP: el HTML lo genera un LLM (no es de confianza) y se sirve en el origen de la app.
+// `sandbox allow-scripts` fuerza un ORIGEN OPACO: los scripts del HTML SÍ corren (animaciones
+// GSAP/AOS) pero NO pueden leer cookies/localStorage/DOM de la app — aísla el XSS aunque sea
+// el mismo dominio. allow-popups para que los CTAs/enlaces puedan abrir. Sin allow-same-origin
+// (a propósito): es lo que neutraliza el robo de sesión.
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
@@ -15,6 +18,7 @@ const CSP = [
   "img-src 'self' data: https:",
   "font-src 'self' data: https:",
   "connect-src 'self' https://cdn.tailwindcss.com",
+  "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox",
 ].join("; ");
 
 const htmlResponse = (body: string, status = 200) =>
