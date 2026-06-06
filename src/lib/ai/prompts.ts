@@ -19,6 +19,19 @@ REGLAS:
 - Razona sobre la paleta, la jerarquía tipográfica y el ritmo de espaciado reales.
 - Sé concreto y conciso. Responde en español.`;
 
+/**
+ * Resolver marca → dominio oficial. Salida estructurada (resolveResultSchema).
+ * Determinista: solo identifica, no diseña. Si no está seguro, debe marcar confidence: low.
+ */
+export const BRAND_RESOLVE_PROMPT = `Eres un identificador de dominios oficiales de marcas y cadenas.
+Dado el nombre de una marca, empresa o cadena, devuelve el dominio de su sitio web OFICIAL.
+
+REGLAS:
+- Devuelve SOLO el host (sin http/https, sin ruta), ej: "www.starbucks.com", "bbva.mx".
+- Usa el dominio corporativo/oficial real de la marca, no agregadores, wikis ni redes sociales.
+- Si la marca es ambigua o NO conoces su dominio oficial con seguridad, marca confidence: "low".
+- No inventes dominios. Ante la duda, confidence: "low".`;
+
 export function generateSystemPrompt(
   language: Language = "es",
   imageCount = 0,

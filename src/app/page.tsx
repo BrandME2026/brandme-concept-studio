@@ -9,13 +9,13 @@ export default function Home() {
           <div className="grid items-center gap-12 md:grid-cols-2">
             {/* Columna izquierda: titular + form */}
             <div className="flex flex-col gap-6">
-              <span className="eyebrow text-body">Diseño desde cualquier URL</span>
+              <span className="eyebrow text-body">Diseño desde cualquier cadena</span>
               <h1 className="max-w-xl text-5xl font-medium leading-tight tracking-[-1.5px] md:text-6xl">
-                Pega una URL y obtén una propuesta de diseño inspirada.
+                Escribe el nombre de una cadena y obtén una propuesta de diseño.
               </h1>
               <p className="max-w-md text-lg leading-relaxed text-body">
-                Extraemos colores, tipografía y layout reales de la web, charlas
-                con la IA y generamos un{" "}
+                Identificamos su web oficial, extraemos colores, tipografía y
+                layout reales, charlas con la IA y generamos un{" "}
                 <span className="font-mono uppercase tracking-tight text-on-dark">
                   DESIGN.md
                 </span>{" "}

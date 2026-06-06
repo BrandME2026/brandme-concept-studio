@@ -14,6 +14,40 @@ export const urlInputSchema = z.object({
 
 export type UrlInput = z.infer<typeof urlInputSchema>;
 
+/** Input del resolver: texto libre (nombre de cadena o URL). */
+export const resolveInputSchema = z.object({
+  query: z.string().trim().min(2, "Escribe al menos 2 caracteres"),
+});
+
+export type ResolveInput = z.infer<typeof resolveInputSchema>;
+
+/**
+ * ¿El texto ya parece una URL/dominio? (http(s):// o "algo.tld").
+ * Si lo es, saltamos la resolución por LLM y usamos el flujo de extracción directo.
+ */
+export function looksLikeUrl(input: string): boolean {
+  const s = input.trim();
+  if (/^https?:\/\//i.test(s)) return true;
+  // dominio sin esquema: sin espacios y con un TLD de letras (ej. nike.com, sub.dominio.io)
+  return /^[^\s/]+\.[a-z]{2,}([/?#].*)?$/i.test(s);
+}
+
+/**
+ * Salida estructurada que el LLM produce al resolver una marca → dominio oficial.
+ * Solo el host (sin esquema); nosotros construimos https://. confidence "low" => no resuelto.
+ */
+export const resolveResultSchema = z.object({
+  brand: z.string().describe("Nombre canónico de la marca/cadena identificada"),
+  domain: z
+    .string()
+    .describe("Dominio del sitio OFICIAL, solo host sin http (ej. www.starbucks.com)"),
+  confidence: z
+    .enum(["high", "low"])
+    .describe("high si estás seguro del dominio oficial; low si no"),
+});
+
+export type ResolveResult = z.infer<typeof resolveResultSchema>;
+
 /**
  * Salida estructurada que el LLM debe producir (juicio del modelo).
  * La serialización a markdown DESIGN.md la hace código determinista (design-md.ts).

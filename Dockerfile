@@ -9,10 +9,16 @@ RUN corepack enable
 FROM base AS deps
 WORKDIR /app
 # minimumReleaseAge: 0 va en pnpm-workspace.yaml (el lockfile fija versiones ya verificadas;
-# el cooldown supply-chain bloquearía el install reproducible). fetch-timeout amplio para
-# redes lentas dentro del contenedor.
+# el cooldown supply-chain bloquearía el install reproducible).
+# Reintentos de red robustos en vez de un timeout gigante (que cuelga el builder si un
+# paquete tarda). Cache de pnpm montada para acelerar reinstalaciones.
+ENV npm_config_fetch_retries=5 \
+    npm_config_fetch_retry_factor=2 \
+    npm_config_fetch_retry_mintimeout=10000 \
+    npm_config_fetch_retry_maxtimeout=60000
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile --config.fetch-timeout=120000
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
 
 # ─── Build ───
 FROM base AS builder
