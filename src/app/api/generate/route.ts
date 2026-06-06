@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import { streamObject } from "ai";
+import { streamText, Output } from "ai";
 import { z } from "zod";
-import { getDesignModel, assertOpenRouterConfigured } from "@/lib/ai/openrouter";
+import {
+  getDesignModel,
+  assertOpenRouterConfigured,
+  REASONING_PROVIDER_OPTIONS,
+} from "@/lib/ai/openrouter";
 import { generateSystemPrompt } from "@/lib/ai/prompts";
 import { buildGenerateMessages } from "@/lib/ai/build-messages";
 import { designProposalSchema, tokensSchema, QUALITY_VALUES } from "@/lib/schemas";
@@ -31,6 +35,7 @@ const generateBodySchema = z.object({
  * en vivo (nombre → colores → tipografía → html) en vez de un spinner mudo.
  *  {type:"partial", object}  → objeto parcial conforme se genera
  *  {type:"progress", field}  → campo de alto nivel recién completado
+ *  {type:"reasoning", text}  → fragmento del razonamiento del modelo (si lo emite)
  *  {type:"done", proposal, designMd, html}
  *  {type:"error", message}
  */
@@ -83,26 +88,43 @@ export async function POST(req: Request) {
       };
 
       try {
-        const result = streamObject({
+        const result = streamText({
           model: getDesignModel(quality),
-          schema: designProposalSchema,
+          experimental_output: Output.object({ schema: designProposalSchema }),
           system: generateSystemPrompt(language, images.length),
           messages: buildGenerateMessages(tokens, screenshot, brief, images),
+          providerOptions: REASONING_PROVIDER_OPTIONS,
         });
 
-        const seenFields = new Set<string>();
-        for await (const partial of result.partialObjectStream) {
-          if (closed) break;
-          send({ type: "partial", object: partial });
-          for (const field of Object.keys(partial ?? {})) {
-            if (!seenFields.has(field)) {
-              seenFields.add(field);
-              send({ type: "progress", field });
+        // Consumimos dos vistas del mismo stream interno en paralelo:
+        // - fullStream: para el razonamiento del modelo (reasoning-delta).
+        // - partialOutputStream: para el objeto parcial → 6 pasos del studio.
+        const reasoningPump = (async () => {
+          for await (const part of result.fullStream) {
+            if (closed) break;
+            if (part.type === "reasoning-delta") {
+              send({ type: "reasoning", text: part.text });
             }
           }
-        }
+        })();
 
-        const object = await result.object;
+        const seenFields = new Set<string>();
+        const partialPump = (async () => {
+          for await (const partial of result.partialOutputStream) {
+            if (closed) break;
+            send({ type: "partial", object: partial });
+            for (const field of Object.keys(partial ?? {})) {
+              if (!seenFields.has(field)) {
+                seenFields.add(field);
+                send({ type: "progress", field });
+              }
+            }
+          }
+        })();
+
+        await Promise.all([reasoningPump, partialPump]);
+
+        const object = await result.output;
         const designMd = serializeDesignMd(object);
         // Sustituir los marcadores {{IMG_n}} por las imágenes reales del usuario.
         const html = injectImages(object.html, images);

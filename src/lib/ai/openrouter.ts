@@ -46,6 +46,32 @@ export function getDesignModel(quality: Quality = "alta") {
 /** Modelo por defecto (alta calidad) para usos que no eligen calidad. */
 export const designModel = getDesignModel("alta");
 
+// Activa los reasoning tokens de OpenRouter (chain-of-thought del modelo) para que
+// la generación pueda mostrar "qué piensa el agente" en vivo. `effort` configurable
+// por env var; el resto de tareas (chat/resolve) NO lo activan para no gastar tokens.
+const REASONING_EFFORT = (process.env.OPENROUTER_REASONING_EFFORT ?? "medium") as
+  | "xhigh"
+  | "high"
+  | "medium"
+  | "low"
+  | "minimal";
+
+/** providerOptions para activar reasoning en streamText (solo en /api/generate). */
+export const REASONING_PROVIDER_OPTIONS = {
+  openrouter: { reasoning: { enabled: true, effort: REASONING_EFFORT } },
+} as const;
+
+// Modelo barato para tareas livianas (chat de afinado y resolución marca→URL): no
+// requieren el juicio del modelo premium. DeepSeek V4 Flash da el mejor calidad/precio
+// (~12× más barato que GPT-5.5). Configurable por env var; fallback a Sonnet si falla.
+const CHAT_MODEL = process.env.OPENROUTER_CHAT_MODEL ?? "deepseek/deepseek-v4-flash";
+const CHAT_FALLBACK = process.env.OPENROUTER_CHAT_FALLBACK ?? "anthropic/claude-sonnet-4.6";
+
+/** Modelo económico para chat y resolución (no para la generación de la propuesta). */
+export const chatModel = openrouter(CHAT_MODEL, {
+  extraBody: { models: [CHAT_MODEL, CHAT_FALLBACK] },
+});
+
 export function assertOpenRouterConfigured() {
   if (!apiKey) {
     throw new Error(

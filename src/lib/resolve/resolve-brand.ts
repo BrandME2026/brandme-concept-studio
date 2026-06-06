@@ -1,5 +1,5 @@
 import { generateObject } from "ai";
-import { designModel } from "@/lib/ai/openrouter";
+import { chatModel } from "@/lib/ai/openrouter";
 import { BRAND_RESOLVE_PROMPT } from "@/lib/ai/prompts";
 import { resolveResultSchema } from "@/lib/schemas";
 import { assertSafeUrl } from "@/lib/extract/ssrf-guard";
@@ -44,7 +44,7 @@ export async function resolveBrandToUrl(query: string): Promise<ResolveOutcome> 
   let confidence: "high" | "low";
   try {
     const { object } = await generateObject({
-      model: designModel,
+      model: chatModel,
       schema: resolveResultSchema,
       system: BRAND_RESOLVE_PROMPT,
       prompt: `Marca/cadena: "${query}"`,

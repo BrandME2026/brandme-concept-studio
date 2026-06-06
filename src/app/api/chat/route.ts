@@ -1,5 +1,5 @@
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import { designModel, assertOpenRouterConfigured } from "@/lib/ai/openrouter";
+import { chatModel, assertOpenRouterConfigured } from "@/lib/ai/openrouter";
 import { CHAT_SYSTEM_PROMPT, tokensContext } from "@/lib/ai/prompts";
 import type { DesignTokens } from "@/types/design";
 
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     : CHAT_SYSTEM_PROMPT;
 
   const result = streamText({
-    model: designModel,
+    model: chatModel,
     system,
     messages: await convertToModelMessages(messages),
   });
