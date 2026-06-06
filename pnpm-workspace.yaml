@@ -2,6 +2,11 @@
 # el cooldown de supply-chain (paquetes recién publicados) que bloquearía el install.
 minimumReleaseAge: 0
 
-ignoredBuiltDependencies:
+# Aprobar explícitamente los build scripts de deps nativas (pnpm 10+ los bloquea por
+# defecto; en CI con --frozen-lockfile eso es error fatal). sharp lo usa Next para
+# optimización de imágenes; unrs-resolver es resolver nativo.
+onlyBuiltDependencies:
   - sharp
   - unrs-resolver
+  - "@tailwindcss/oxide"
+  - esbuild
