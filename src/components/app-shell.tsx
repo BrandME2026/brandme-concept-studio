@@ -288,7 +288,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-5">
         <div className="mx-auto w-full max-w-2xl">
           {empty ? (
-            <div className="flex flex-col items-center gap-5 pt-[12vh] text-center">
+            <div className="flex animate-fade flex-col items-center gap-5 pt-[12vh] text-center">
               <div className="bg-brand-gradient h-12 w-12 rounded-lg" />
               <h1 className="text-2xl font-medium leading-tight tracking-[-1px]">
                 {t("hc.greeting")}
@@ -316,7 +316,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
                 return (
                   <div
                     key={m.id}
-                    className={`flex animate-step ${isUser ? "justify-end" : "justify-start"}`}
+                    className={`flex animate-msg ${isUser ? "justify-end" : "justify-start"}`}
                   >
                     <div
                       className={`max-w-[88%] rounded-lg px-4 py-2.5 text-sm leading-relaxed ${
@@ -398,7 +398,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               busy={gen.generating || launching}
             />
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 animate-scale overflow-hidden">
             <PreviewFrame html={proposal.html} />
           </div>
         </>
@@ -407,14 +407,16 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
           <div className="flex items-center justify-between gap-2 border-b border-hairline p-3">
             <span className="eyebrow text-body">{savedPage.name ?? ""}</span>
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 animate-scale overflow-hidden">
             <PreviewFrame html={savedPage.html} />
           </div>
         </>
       ) : gen.generating || launching ? (
-        <GenerationProgress partial={gen.partial} seen={gen.seenFields} reasoning={gen.reasoning} />
+        <div className="h-full animate-fade">
+          <GenerationProgress partial={gen.partial} seen={gen.seenFields} reasoning={gen.reasoning} />
+        </div>
       ) : (
-        <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+        <div className="flex h-full animate-fade flex-col items-center justify-center gap-3 p-8 text-center">
           <div className="bg-brand-gradient h-10 w-10 rounded-md opacity-60" />
           <p className="max-w-xs text-sm text-body">{t("hc.artifactEmpty")}</p>
         </div>
