@@ -88,9 +88,18 @@ export async function POST(req: Request) {
       // Sin execute: el efecto (resolver marca → ir al studio) ocurre en el cliente.
       launchBrand: tool({
         description:
-          "Lanza el flujo para generar la página de una marca de franquicia. Llámala cuando el usuario quiera lanzar/crear la página de una marca concreta.",
+          "Lanza el flujo para generar la página de una marca. Llámala SOLO tras conocer al usuario y recibir su confirmación. Pasa el contexto que reuniste para personalizar la página.",
         inputSchema: z.object({
           brand: z.string().describe("Nombre de la marca a lanzar, ej. 'Burger King'"),
+          nameAndFirm: z
+            .string()
+            .optional()
+            .describe("Nombre y firma del usuario, si lo sabes"),
+          markets: z.string().optional().describe("Mercados/ciudades, si los sabes"),
+          positioning: z
+            .string()
+            .optional()
+            .describe("Posicionamiento o cliente ideal, si surgió"),
         }),
       }),
     },

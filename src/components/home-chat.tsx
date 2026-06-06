@@ -38,7 +38,13 @@ export function HomeChat() {
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     onToolCall: ({ toolCall }) => {
       if (toolCall.toolName !== "launchBrand") return;
-      const brand = (toolCall.input as { brand?: string })?.brand?.trim();
+      const ctx = toolCall.input as {
+        brand?: string;
+        nameAndFirm?: string;
+        markets?: string;
+        positioning?: string;
+      };
+      const brand = ctx?.brand?.trim();
       if (!brand) return;
       setLaunching(true);
       // No await dentro de onToolCall (regla del SDK): manejamos en una IIFE.
@@ -51,7 +57,7 @@ export function HomeChat() {
           });
           const json = await res.json().catch(() => null);
           if (json?.success && json.data?.url) {
-            sessionStorage.setItem(BRIEF_STORAGE_KEY, briefFrom(chat.messages, brand));
+            sessionStorage.setItem(BRIEF_STORAGE_KEY, briefFrom(ctx));
             router.push(`/studio?url=${encodeURIComponent(json.data.url)}`);
             return;
           }
@@ -198,16 +204,23 @@ export function HomeChat() {
 }
 
 /**
- * Brief desde la conversación libre: las frases del usuario + la marca elegida.
- * Lo consume el studio (sessionStorage) igual que el brief del onboarding.
+ * Brief desde el contexto que el agente reunió en la charla (nombre, marca, mercados,
+ * posicionamiento). Lo consume el studio (sessionStorage) igual que el brief del onboarding.
  */
-function briefFrom(messages: UIMessage[], brand: string): string {
-  const userText = messages
-    .filter((m) => m.role === "user")
-    .map(messageText)
-    .filter(Boolean)
-    .join("\n");
-  return `Client conversation:\n- Brand to launch: ${brand}\n${userText}`.trim();
+function briefFrom(ctx: {
+  brand?: string;
+  nameAndFirm?: string;
+  markets?: string;
+  positioning?: string;
+}): string {
+  const lines = [
+    "Client onboarding (from chat):",
+    ctx.nameAndFirm ? `- Name & firm: ${ctx.nameAndFirm}` : "",
+    `- Brand to launch: ${ctx.brand ?? ""}`,
+    ctx.markets ? `- Target markets: ${ctx.markets}` : "",
+    ctx.positioning ? `- Positioning: ${ctx.positioning}` : "",
+  ];
+  return lines.filter(Boolean).join("\n");
 }
 
 function Dot({ delay = "0ms" }: { delay?: string }) {
