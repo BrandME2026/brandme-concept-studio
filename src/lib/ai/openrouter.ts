@@ -39,7 +39,8 @@ const openrouter = createOpenRouter({
  */
 export function getDesignModel(quality: Quality = "alta") {
   const primary = QUALITY_MODELS[quality] ?? DEFAULT_MODEL;
-  const models = [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)];
+  // OpenRouter limita el array `models` a 3 ítems. Primario + 2 fallbacks como máximo.
+  const models = [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)].slice(0, 3);
   return openrouter(primary, { extraBody: { models } });
 }
 
