@@ -7,6 +7,7 @@ import { Panel, Group, Separator } from "react-resizable-panels";
 import type { DesignTokens } from "@/types/design";
 import type { DesignProposal } from "@/lib/schemas";
 import type { Language } from "@/lib/ai/prompts";
+import { BRIEF_STORAGE_KEY } from "@/lib/onboarding";
 import { StudioTopbar } from "./studio-topbar";
 import { ExtractionPanel } from "./extraction-panel";
 import { ExtractionDrawer } from "./extraction-drawer";
@@ -47,6 +48,15 @@ export function StudioClient({ url }: { url: string }) {
   const [showExtraction, setShowExtraction] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [quality, setQuality] = useState<"rapido" | "alta">("alta");
+  // Brief del onboarding (si el usuario llegó vía el chat de bienvenida). Se consume
+  // una sola vez desde sessionStorage (lazy init) para no exponer datos personales en
+  // la URL. El guard typeof window evita tocar sessionStorage durante el SSR.
+  const [initialBrief] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = sessionStorage.getItem(BRIEF_STORAGE_KEY);
+    if (stored) sessionStorage.removeItem(BRIEF_STORAGE_KEY);
+    return stored;
+  });
 
   // Chat elevado: sus mensajes alimentan el brief de la generación.
   const chat = useChat({
@@ -87,9 +97,9 @@ export function StudioClient({ url }: { url: string }) {
     const sent = chat.messages
       .filter((m) => m.role === "user")
       .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text));
-    const all = [...sent, chatInput].join(" ").trim();
+    const all = [initialBrief, ...sent, chatInput].filter(Boolean).join("\n\n").trim();
     return all || DEFAULT_BRIEF;
-  }, [chat.messages, chatInput]);
+  }, [chat.messages, chatInput, initialBrief]);
 
   const handleChatSend = useCallback(
     (text: string) => {

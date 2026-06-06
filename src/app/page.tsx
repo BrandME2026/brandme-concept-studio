@@ -1,4 +1,4 @@
-import { UrlInputForm } from "@/components/url-input-form";
+import { OnboardingChat } from "@/components/onboarding-chat";
 
 export default function Home() {
   return (
@@ -9,19 +9,15 @@ export default function Home() {
           <div className="grid items-center gap-12 md:grid-cols-2">
             {/* Columna izquierda: titular + form */}
             <div className="flex flex-col gap-6">
-              <span className="eyebrow text-body">Diseño desde cualquier cadena</span>
-              <h1 className="max-w-xl text-5xl font-medium leading-tight tracking-[-1.5px] md:text-6xl">
-                Escribe el nombre de una cadena y obtén una propuesta de diseño.
+              <span className="eyebrow text-body">Tell our agent your brands</span>
+              <h1 className="max-w-xl text-4xl font-medium leading-tight tracking-[-1.5px] md:text-5xl">
+                Cuéntanos sobre tu firma y lanzamos tu marca.
               </h1>
               <p className="max-w-md text-lg leading-relaxed text-body">
-                Identificamos su web oficial, extraemos colores, tipografía y
-                layout reales, charlas con la IA y generamos un{" "}
-                <span className="font-mono uppercase tracking-tight text-on-dark">
-                  DESIGN.md
-                </span>{" "}
-                + un preview en vivo.
+                Responde unas preguntas y nuestro agente identifica la web oficial,
+                la analiza y genera tu propuesta con un preview en vivo.
               </p>
-              <UrlInputForm />
+              <OnboardingChat />
             </div>
 
             {/* Columna derecha: degradado de marca (única chrome decorativa) */}

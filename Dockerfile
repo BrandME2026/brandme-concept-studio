@@ -3,7 +3,9 @@
 FROM mcr.microsoft.com/playwright:v1.60.0-noble AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+# Fijar pnpm 10 (respeta onlyBuiltDependencies del workspace; pnpm 11 lo trata distinto
+# y rompe el build con ERR_PNPM_IGNORED_BUILDS).
+RUN corepack enable && corepack prepare pnpm@10.28.1 --activate
 
 # ─── Dependencias ───
 FROM base AS deps
