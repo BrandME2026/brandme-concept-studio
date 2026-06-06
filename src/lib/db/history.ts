@@ -85,6 +85,38 @@ export async function listGenerations(
   return rows;
 }
 
+/** Lista TODAS las generaciones (galería pública de referencia), sin filtro de sesión. */
+export async function listAllGenerations(limit = 60): Promise<GenerationListItem[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<GenerationListItem>(
+    `SELECT id, url, name, screenshot, created_at AS "createdAt"
+     FROM generations ORDER BY created_at DESC LIMIT $1`,
+    [limit],
+  );
+  return rows;
+}
+
+/** Cuenta todas las generaciones (stat real "brands in registry"). */
+export async function countAllGenerations(): Promise<number> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM generations`,
+  );
+  return Number(rows[0]?.count ?? 0);
+}
+
+/** Obtiene una generación por id SIN verificar sesión (vista pública /p/[id]). */
+export async function getPublicGeneration(id: string): Promise<GenerationRecord | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<GenerationRecord>(
+    `SELECT id, session_id AS "sessionId", url, name, design_md AS "designMd",
+            html, screenshot, interactions, created_at AS "createdAt"
+     FROM generations WHERE id = $1`,
+    [id],
+  );
+  return rows[0] ?? null;
+}
+
 /** Obtiene una generación completa (verificando que pertenece a la sesión). */
 export async function getGeneration(
   id: string,
