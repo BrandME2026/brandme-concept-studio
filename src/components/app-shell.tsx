@@ -110,20 +110,30 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
     [],
   );
 
-  /** Ejecuta resolve → extract → generate y pinta el artifact. */
+  /** Ejecuta (resolve si hace falta) → extract → generate y pinta el artifact. */
   const runLaunch = useCallback(
-    async (ctx: { brand: string; nameAndFirm?: string; markets?: string; positioning?: string }) => {
+    async (ctx: {
+      brand: string;
+      url?: string;
+      nameAndFirm?: string;
+      markets?: string;
+      positioning?: string;
+    }) => {
       setLaunching(true);
       setSavedPage(null);
       try {
-        const r = await fetch("/api/resolve", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: ctx.brand }),
-        });
-        const rj = await r.json().catch(() => null);
-        if (!rj?.success || !rj.data?.url) return { ok: false as const };
-        const url: string = rj.data.url;
+        // Si el usuario dio una URL, la usamos directo; si no, resolvemos la marca.
+        let url = ctx.url?.trim();
+        if (!url) {
+          const r = await fetch("/api/resolve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: ctx.brand }),
+          });
+          const rj = await r.json().catch(() => null);
+          if (!rj?.success || !rj.data?.url) return { ok: false as const, needsUrl: true };
+          url = rj.data.url as string;
+        }
 
         const e = await fetch("/api/extract", {
           method: "POST",
@@ -208,10 +218,18 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
         if (!ctx?.brand) return;
         void (async () => {
           const out = await runLaunch(ctx);
+          // Mensaje claro al agente para evitar bucles de reintento.
+          let message: string | undefined;
+          if (!out.ok) {
+            message =
+              "needsUrl" in out && out.needsUrl && !ctx.url
+                ? t("hc.askUrl", { brand: ctx.brand }) // pide la URL UNA vez
+                : t("hc.genFailed"); // ya falló con URL: no reintentar, disculparse
+          }
           chat.addToolOutput({
             tool: "launchBrand",
             toolCallId: toolCall.toolCallId,
-            output: out.ok ? { ok: true } : { ok: false, message: t("hc.resolveFailed", { brand: ctx.brand }) },
+            output: out.ok ? { ok: true } : { ok: false, message },
           });
         })();
       } else if (toolCall.toolName === "refineDesign") {

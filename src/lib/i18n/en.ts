@@ -163,6 +163,8 @@ export const en: Record<TranslationKey, string> = {
   "hc.suggest2": "How does it work?",
   "hc.suggest3": "I have several franchise brands",
   "hc.resolveFailed": "I couldn't identify the official site for {brand}. Can you share the URL?",
+  "hc.askUrl": "Couldn't identify the official site for {brand}. Ask the user for the official URL (e.g. https://...) and call launchBrand again with that url field. Do NOT retry without the URL.",
+  "hc.genFailed": "Couldn't generate the page this time. Apologize briefly and offer to retry later. Do NOT call the tool again automatically.",
   "hc.artifactEmpty": "Your page will appear here as soon as we generate it.",
 
   // Conversation sidebar

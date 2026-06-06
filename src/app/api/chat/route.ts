@@ -84,6 +84,10 @@ export async function POST(req: Request) {
           "Lanza el flujo para generar la página de una marca. Llámala SOLO tras conocer al usuario y recibir su confirmación, y cuando AÚN no hay página generada. Pasa el contexto reunido.",
         inputSchema: z.object({
           brand: z.string().describe("Nombre de la marca a lanzar, ej. 'Burger King'"),
+          url: z
+            .string()
+            .optional()
+            .describe("URL oficial de la marca SI el usuario la dio (ej. https://www.bk.com); si no, omitir"),
           nameAndFirm: z
             .string()
             .optional()
