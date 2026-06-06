@@ -40,24 +40,23 @@ export function OnboardingChat() {
 
   /**
    * Entra a un paso: lo fija, y tras un breve "typing" inserta su pregunta. Si el paso
-   * "first" no aplica (≤1 marca elegida) lo salta. Toda la mutación de estado ocurre
-   * dentro del timer (async), no en el cuerpo de un effect — evita renders en cascada.
+   * "first" no aplica (≤1 marca elegida) lo salta (sin recursión). Toda la mutación de
+   * estado ocurre dentro del timer (async), no en un effect — evita renders en cascada.
    */
   const enterStep = useCallback((index: number) => {
-    const next = STEPS[index] as Step | undefined;
-    if (!next) {
-      setStepIndex(index);
-      return;
+    let target = index;
+    let next = STEPS[target] as Step | undefined;
+    if (next?.key === "first" && brandsRef.current.length <= 1) {
+      target += 1;
+      next = STEPS[target] as Step | undefined;
     }
-    if (next.key === "first" && brandsRef.current.length <= 1) {
-      enterStep(index + 1); // saltar
-      return;
-    }
-    setStepIndex(index);
+    setStepIndex(target);
+    if (!next) return;
+    const question = next.question;
     setTyping(true);
     setTimeout(() => {
       setTyping(false);
-      setHistory((h) => [...h, { id: nextId(), role: "assistant", text: next.question }]);
+      setHistory((h) => [...h, { id: nextId(), role: "assistant", text: question }]);
     }, 450);
   }, []);
 
