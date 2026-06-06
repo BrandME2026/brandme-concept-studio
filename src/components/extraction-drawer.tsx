@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { DesignTokens } from "@/types/design";
+import { useT } from "@/lib/i18n/context";
 import { ExtractionPanel } from "./extraction-panel";
 
 /** Drawer overlay con el diseño extraído (detalle técnico, bajo demanda). */
@@ -16,6 +17,7 @@ export function ExtractionDrawer({
   tokens: DesignTokens;
   screenshot: string;
 }) {
+  const t = useT();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
@@ -38,16 +40,16 @@ export function ExtractionDrawer({
           open ? "translate-x-0" : "-translate-x-full"
         }`}
         role="dialog"
-        aria-label="Diseño extraído"
+        aria-label={t("extraction.drawer.label")}
       >
         <div className="flex items-center justify-between border-b border-hairline p-4">
-          <span className="eyebrow text-body">Diseño extraído</span>
+          <span className="eyebrow text-body">{t("extraction.drawer.label")}</span>
           <button
             onClick={onClose}
             className="font-mono text-xs uppercase text-body transition-opacity hover:opacity-70"
-            aria-label="Cerrar"
+            aria-label={t("extraction.drawer.close")}
           >
-            Cerrar ✕
+            {t("extraction.drawer.close")} ✕
           </button>
         </div>
         <div className="h-[calc(100%-57px)] overflow-y-auto">
