@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
@@ -46,7 +45,6 @@ type MobileTab = "chat" | "preview";
  * artifact (preview de la página generada inline). Sustituye home + studio.
  */
 export function AppShell({ initial }: { initial?: InitialConversation }) {
-  const router = useRouter();
   const { locale } = useLocale();
   const t = useT();
 
@@ -250,6 +248,19 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
     [chat, busy, launching, hasPage],
   );
 
+  /** Reinicia a una conversación nueva: limpia chat, artifact, estado y URL. */
+  const handleNew = useCallback(() => {
+    chat.setMessages([]);
+    chat.stop?.();
+    gen.reset();
+    setExtraction(null);
+    setSavedPage(null);
+    setConvId(null);
+    setInput("");
+    setLaunching(false);
+    window.history.replaceState(null, "", "/");
+  }, [chat, gen]);
+
   const empty = chat.messages.length === 0;
   const suggestions = ["hc.suggest1", "hc.suggest2", "hc.suggest3"] as const;
 
@@ -395,7 +406,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
 
   return (
     <div className="flex h-full flex-1">
-      <ConversationSidebar activeId={convId} onNew={() => router.push("/")} />
+      <ConversationSidebar activeId={convId} onNew={handleNew} />
 
       {/* Desktop: chat | artifact redimensionables */}
       <div className="hidden min-h-0 flex-1 lg:flex">
