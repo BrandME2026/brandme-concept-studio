@@ -1,4 +1,5 @@
 import { getPool } from "./client";
+import { normalizeKey } from "@/lib/seo/slug";
 
 export interface GenerationRecord {
   id: string;
@@ -157,24 +158,33 @@ export async function getPublicGenerationBySlug(slug: string): Promise<{
 /**
  * Busca una generación existente por marca (+ ciudad opcional), sin filtrar por sesión.
  * Anti-duplicado: si ya existe la misma marca+ciudad, reusamos esa página en vez de
- * generar otra clónica. Comparación normalizada (lower+trim) para que "McDonald's" y
- * "mcdonald's" cuenten igual. city NULL ⇒ coincide solo con registros sin ciudad.
+ * generar otra clónica. La comparación usa normalizeKey (sin acentos ni puntuación) para
+ * que "McDonald's", "McDonalds" y "mcdonald s" cuenten como la misma marca. El filtrado
+ * se hace en memoria porque normalizar puntuación en SQL puro es frágil; el volumen de
+ * marcas es bajo (decenas), así que es barato. city vacía ⇒ coincide con registros sin
+ * ciudad o de la misma ciudad normalizada.
  */
 export async function findGenerationByBrandCity(
   brand: string,
   city: string | null,
 ): Promise<{ id: string; slug: string | null } | null> {
   await ensureSchema();
-  const b = brand.trim().toLowerCase();
-  const c = city?.trim().toLowerCase() ?? null;
-  const { rows } = await getPool().query<{ id: string; slug: string | null }>(
-    `SELECT id, slug FROM generations
-     WHERE lower(trim(brand)) = $1
-       AND ( (city IS NULL AND $2::text IS NULL) OR lower(trim(city)) = $2 )
-     ORDER BY created_at ASC LIMIT 1`,
-    [b, c],
+  const bKey = normalizeKey(brand);
+  if (!bKey) return null;
+  const cKey = normalizeKey(city);
+  const { rows } = await getPool().query<{
+    id: string;
+    slug: string | null;
+    brand: string | null;
+    city: string | null;
+  }>(
+    `SELECT id, slug, brand, city FROM generations
+     WHERE brand IS NOT NULL ORDER BY created_at ASC`,
   );
-  return rows[0] ?? null;
+  const match = rows.find(
+    (r) => normalizeKey(r.brand) === bKey && normalizeKey(r.city) === cKey,
+  );
+  return match ? { id: match.id, slug: match.slug } : null;
 }
 
 /** Cuenta todas las generaciones (stat real "brands in registry"). */
