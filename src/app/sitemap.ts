@@ -2,10 +2,12 @@ import type { MetadataRoute } from "next";
 import { isDbConfigured } from "@/lib/db/client";
 import { listAllGenerations } from "@/lib/db/history";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+// Dinámico: lee la URL y la DB en runtime (no horneadas en build-time).
+export const dynamic = "force-dynamic";
 
 /** Sitemap: la home + cada página generada pública (/p/[id]). */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const entries: MetadataRoute.Sitemap = [
     { url: SITE_URL, changeFrequency: "weekly", priority: 1 },
   ];
