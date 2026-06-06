@@ -6,8 +6,8 @@ import { DefaultChatTransport } from "ai";
 import { Panel, Group, Separator } from "react-resizable-panels";
 import type { DesignTokens } from "@/types/design";
 import type { DesignProposal } from "@/lib/schemas";
-import type { Language } from "@/lib/ai/prompts";
 import { BRIEF_STORAGE_KEY } from "@/lib/onboarding";
+import { useLocale, useT } from "@/lib/i18n/context";
 import { StudioTopbar } from "./studio-topbar";
 import { ExtractionPanel } from "./extraction-panel";
 import { ExtractionDrawer } from "./extraction-drawer";
@@ -38,9 +38,12 @@ export function StudioClient({ url }: { url: string }) {
   const [extraction, setExtraction] = useState<Extraction | null>(null);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [language, setLanguage] = useState<Language>("es");
+  const { locale } = useLocale();
+  const t = useT();
   const [partial, setPartial] = useState<Partial<DesignProposal> | null>(null);
   const [seenFields, setSeenFields] = useState<Set<string>>(new Set());
+  // Razonamiento del agente acumulado en vivo (para el panel desplegable).
+  const [reasoning, setReasoning] = useState("");
   const [mobileTab, setMobileTab] = useState<MobileTab>("extract");
   const [chatInput, setChatInput] = useState("");
   // La extracción (detalle técnico) está oculta por defecto: al cliente final le
@@ -116,6 +119,7 @@ export function StudioClient({ url }: { url: string }) {
     setProposal(null);
     setPartial(null);
     setSeenFields(new Set());
+    setReasoning("");
     setMobileTab("preview");
 
     try {
@@ -126,7 +130,7 @@ export function StudioClient({ url }: { url: string }) {
           tokens: extraction.tokens,
           screenshot: extraction.screenshot,
           brief: briefFromChat,
-          language,
+          language: locale,
           images,
           quality,
         }),
@@ -156,6 +160,8 @@ export function StudioClient({ url }: { url: string }) {
           } else if (evt.type === "progress") {
             seen.add(evt.field);
             setSeenFields(new Set(seen));
+          } else if (evt.type === "reasoning") {
+            setReasoning((r) => r + evt.text);
           } else if (evt.type === "done") {
             setProposal({
               proposal: evt.proposal,
@@ -172,7 +178,7 @@ export function StudioClient({ url }: { url: string }) {
     } finally {
       setGenerating(false);
     }
-  }, [extraction, briefFromChat, language, images, quality]);
+  }, [extraction, briefFromChat, locale, images, quality]);
 
   if (phase === "extracting") {
     return <ExtractionLoading url={url} />;
@@ -181,7 +187,7 @@ export function StudioClient({ url }: { url: string }) {
   if (phase === "error" || !extraction) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-canvas-dark text-on-dark">
-        <h1 className="text-2xl font-medium">No se pudo analizar la web</h1>
+        <h1 className="text-2xl font-medium">{t("studio.extractError")}</h1>
         <p className="text-body">{errorMsg}</p>
       </div>
     );
@@ -204,7 +210,7 @@ export function StudioClient({ url }: { url: string }) {
       </div>
       {proposal.proposal.interactions && (
         <div className="border-t border-hairline px-3 py-2">
-          <span className="eyebrow text-body">Incluye</span>
+          <span className="eyebrow text-body">{t("studio.includes")}</span>
           <p className="mt-0.5 text-xs text-body">{proposal.proposal.interactions}</p>
         </div>
       )}
@@ -216,7 +222,7 @@ export function StudioClient({ url }: { url: string }) {
       </details>
     </div>
   ) : generating ? (
-    <GenerationProgress partial={partial} seen={seenFields} />
+    <GenerationProgress partial={partial} seen={seenFields} reasoning={reasoning} />
   ) : (
     <EmptyPreview errorMsg={errorMsg} />
   );
@@ -225,8 +231,6 @@ export function StudioClient({ url }: { url: string }) {
     <div className="flex flex-1 flex-col">
       <StudioTopbar
         url={url}
-        language={language}
-        onLanguageChange={setLanguage}
         onGenerate={handleGenerate}
         generating={generating}
         canGenerate={!!extraction}
@@ -272,9 +276,9 @@ export function StudioClient({ url }: { url: string }) {
         <div className="flex border-b border-hairline">
           {(
             [
-              ["extract", "Extracción"],
-              ["chat", "Chat"],
-              ["preview", "Preview"],
+              ["extract", t("studio.tab.extract")],
+              ["chat", t("studio.tab.chat")],
+              ["preview", t("studio.tab.preview")],
             ] as const
           ).map(([tab, label]) => (
             <button
@@ -318,6 +322,7 @@ function ResizeHandle() {
 
 /** Pantalla de extracción con temporizador y aviso si tarda más de lo normal. */
 function ExtractionLoading({ url }: { url: string }) {
+  const t = useT();
   const [secs, setSecs] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setSecs((s) => s + 1), 1000);
@@ -329,16 +334,14 @@ function ExtractionLoading({ url }: { url: string }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-canvas-dark px-6 text-on-dark">
       <div className="bg-brand-gradient h-12 w-12 animate-pulse rounded-sm" />
-      <span className="eyebrow text-body">Extrayendo diseño…</span>
+      <span className="eyebrow text-body">{t("extraction.loading.title")}</span>
       <p className="max-w-sm text-center text-xs text-body">
-        Renderizamos la web completa para leer sus colores, tipografía y layout
-        reales.
+        {t("extraction.loading.lead")}
       </p>
       <span className="font-mono text-sm text-on-dark-soft">{secs}s</span>
       {slow && (
         <p className="max-w-sm text-center text-xs text-accent-mint">
-          Esta web tarda más de lo normal (puede ser pesada o estar protegida
-          contra bots). Seguimos intentándolo… si falla, te avisaremos.
+          {t("extraction.loading.slow")}
         </p>
       )}
       <p className="max-w-xs truncate text-center text-[10px] text-body" title={url}>
@@ -349,6 +352,7 @@ function ExtractionLoading({ url }: { url: string }) {
 }
 
 function EmptyPreview({ errorMsg }: { errorMsg: string | null }) {
+  const t = useT();
   if (errorMsg) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-sm">
@@ -359,9 +363,9 @@ function EmptyPreview({ errorMsg }: { errorMsg: string | null }) {
     );
   }
   const steps = [
-    "Revisa el diseño extraído",
-    "Refina en el chat (opcional)",
-    "Pulsa Generar propuesta",
+    t("studio.empty.step.review"),
+    t("studio.empty.step.refine"),
+    t("studio.empty.step.generate"),
   ];
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 p-8 text-center">
@@ -387,7 +391,7 @@ function EmptyPreview({ errorMsg }: { errorMsg: string | null }) {
       </ol>
 
       <p className="max-w-xs text-xs text-muted">
-        El preview de tu diseño nuevo aparecerá aquí.
+        {t("studio.empty.hint")}
       </p>
     </div>
   );

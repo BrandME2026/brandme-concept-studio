@@ -6,14 +6,24 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   STEPS,
-  CONFIRM_ACTIONS,
+  CONFIRM_ACTION_KEYS,
+  INVESTOR_PROFILES,
   BRIEF_STORAGE_KEY,
   buildBrief,
   type Step,
   type OnboardingAnswers,
 } from "@/lib/onboarding";
+import { useT } from "@/lib/i18n/context";
+import type { TranslationKey } from "@/lib/i18n/es";
 
-type Turn = { id: string; role: "assistant" | "user"; text: string };
+/**
+ * Una burbuja del asistente guarda la CLAVE i18n de la pregunta (se traduce al
+ * renderizar, así cambiar de idioma re-traduce el historial). Una del usuario guarda
+ * su texto literal (su respuesta no se traduce).
+ */
+type Turn =
+  | { id: string; role: "assistant"; questionKey: TranslationKey }
+  | { id: string; role: "user"; text: string };
 
 /**
  * Chat de onboarding (wizard determinista). Conversación por pasos sobre el hero dark:
@@ -22,6 +32,7 @@ type Turn = { id: string; role: "assistant" | "user"; text: string };
  */
 export function OnboardingChat() {
   const router = useRouter();
+  const t = useT();
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Partial<OnboardingAnswers>>({});
   const [history, setHistory] = useState<Turn[]>([]);
@@ -52,11 +63,11 @@ export function OnboardingChat() {
     }
     setStepIndex(target);
     if (!next) return;
-    const question = next.question;
+    const questionKey = next.questionKey;
     setTyping(true);
     setTimeout(() => {
       setTyping(false);
-      setHistory((h) => [...h, { id: nextId(), role: "assistant", text: question }]);
+      setHistory((h) => [...h, { id: nextId(), role: "assistant", questionKey }]);
     }, 450);
   }, []);
 
@@ -95,7 +106,7 @@ export function OnboardingChat() {
     const value = textInput.trim();
     if (!value) return;
     if (step.minLength && value.length < step.minLength) {
-      setError(`Please write at least ${step.minLength} characters.`);
+      setError(t("onboarding.minChars", { n: step.minLength }));
       return;
     }
     const field =
@@ -112,7 +123,7 @@ export function OnboardingChat() {
 
   function handleMultiContinue() {
     if (multiSelection.length === 0) {
-      setError("Pick at least one brand.");
+      setError(t("onboarding.pickBrand"));
       return;
     }
     // Si solo hay una marca, ya queda como firstBrand y el paso "first" se salta.
@@ -127,7 +138,10 @@ export function OnboardingChat() {
     if (step?.key === "first") {
       advance(option, { firstBrand: option });
     } else {
-      advance(option, { investorProfile: option });
+      // option = value canónico (inglés). La burbuja muestra el label traducido.
+      const profile = INVESTOR_PROFILES.find((p) => p.value === option);
+      const label = profile ? t(profile.labelKey) : option;
+      advance(label, { investorProfile: option });
     }
   }
 
@@ -151,15 +165,14 @@ export function OnboardingChat() {
         return;
       }
       setError(
-        json?.error?.message ??
-          `Couldn't identify the official site for ${brand}. Try again.`,
+        json?.error?.message ?? t("onboarding.resolveFailed", { brand }),
       );
     } catch {
-      setError("Connection failed. Check your network and try again.");
+      setError(t("onboarding.connectionFailed"));
     } finally {
       setSubmitting(false);
     }
-  }, [answers, router, submitting]);
+  }, [answers, router, submitting, t]);
 
   return (
     <div className="w-full max-w-xl">
@@ -184,7 +197,7 @@ export function OnboardingChat() {
                   : "border border-hairline bg-surface-dark-soft text-on-dark",
               )}
             >
-              {turn.text}
+              {turn.role === "user" ? turn.text : t(turn.questionKey)}
             </div>
           </div>
         ))}
@@ -206,15 +219,15 @@ export function OnboardingChat() {
             <form onSubmit={handleTextSubmit} className="flex flex-col gap-3 sm:flex-row">
               <input
                 type="text"
-                placeholder={step.placeholder}
+                placeholder={t(step.placeholderKey)}
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                aria-label={step.question}
+                aria-label={t(step.questionKey)}
                 autoFocus
                 className="flex-1 rounded-sm border border-white/15 bg-surface-dark-soft px-4 py-3 text-on-dark placeholder:text-body focus:border-accent-periwinkle focus:outline-none"
               />
               <Button type="submit" variant="mint">
-                Send
+                {t("onboarding.send")}
               </Button>
             </form>
           )}
@@ -237,15 +250,27 @@ export function OnboardingChat() {
                 onClick={handleMultiContinue}
                 className="self-start"
               >
-                Continue
+                {t("onboarding.continue")}
               </Button>
             </div>
           )}
 
-          {step.kind === "single" && (
+          {step.kind === "single" && step.key === "first" && (
             <div className="flex flex-wrap gap-2">
-              {(step.key === "first" ? firstOptions : step.options).map((opt) => (
+              {firstOptions.map((opt) => (
                 <Chip key={opt} label={opt} onClick={() => handleSingle(opt)} />
+              ))}
+            </div>
+          )}
+
+          {step.kind === "single" && step.key === "investor" && (
+            <div className="flex flex-wrap gap-2">
+              {INVESTOR_PROFILES.map((p) => (
+                <Chip
+                  key={p.value}
+                  label={t(p.labelKey)}
+                  onClick={() => handleSingle(p.value)}
+                />
               ))}
             </div>
           )}
@@ -253,10 +278,10 @@ export function OnboardingChat() {
           {step.kind === "confirm" && (
             <div className="flex flex-col gap-4">
               <ul className="flex flex-col gap-2">
-                {CONFIRM_ACTIONS.map((action) => (
-                  <li key={action} className="flex items-start gap-2 text-sm text-on-dark">
+                {CONFIRM_ACTION_KEYS.map((actionKey) => (
+                  <li key={actionKey} className="flex items-start gap-2 text-sm text-on-dark">
                     <span className="mt-0.5 text-accent-mint">→</span>
-                    {action}
+                    {t(actionKey)}
                   </li>
                 ))}
               </ul>
@@ -267,7 +292,7 @@ export function OnboardingChat() {
                 disabled={submitting}
                 className="self-start"
               >
-                {submitting ? "Shipping…" : "Yes, ship it →"}
+                {submitting ? t("onboarding.shipping") : t("onboarding.shipIt")}
               </Button>
             </div>
           )}

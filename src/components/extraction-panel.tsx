@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { DesignTokens } from "@/types/design";
 import { ScreenshotModal } from "./screenshot-modal";
+import { useT } from "@/lib/i18n/context";
 
 export function ExtractionPanel({
   tokens,
@@ -12,11 +13,12 @@ export function ExtractionPanel({
   screenshot: string;
 }) {
   const [zoomed, setZoomed] = useState(false);
+  const t = useT();
 
   return (
     <div className="flex flex-col gap-6 overflow-y-auto p-5">
       <div>
-        <span className="eyebrow text-body">Extracción</span>
+        <span className="eyebrow text-body">{t("extraction.eyebrow")}</span>
         <h2 className="mt-1 text-lg font-medium leading-snug tracking-tight">
           {tokens.meta.title || tokens.meta.url}
         </h2>
@@ -26,17 +28,17 @@ export function ExtractionPanel({
         type="button"
         onClick={() => setZoomed(true)}
         className="group relative overflow-hidden rounded-sm border border-hairline"
-        aria-label="Ampliar captura"
+        aria-label={t("extraction.zoom.aria")}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={screenshot} alt="Captura de la web de referencia" className="w-full" />
+        <img src={screenshot} alt={t("extraction.screenshotAlt")} className="w-full" />
         <span className="absolute bottom-2 right-2 rounded-xs bg-canvas-dark/80 px-2 py-0.5 font-mono text-[10px] uppercase text-on-dark opacity-0 transition-opacity group-hover:opacity-100">
-          Ampliar
+          {t("extraction.zoom")}
         </span>
       </button>
 
       <section>
-        <span className="eyebrow text-body">Paleta</span>
+        <span className="eyebrow text-body">{t("extraction.palette")}</span>
         <div className="mt-2 grid grid-cols-2 gap-2">
           {tokens.colors.palette.map((c) => (
             <div
@@ -59,7 +61,7 @@ export function ExtractionPanel({
       </section>
 
       <section>
-        <span className="eyebrow text-body">Tipografía</span>
+        <span className="eyebrow text-body">{t("extraction.typography")}</span>
         <ul className="mt-2 space-y-1.5 text-sm">
           {tokens.typography.fontFamilies.slice(0, 4).map((f, i) => (
             <li key={`${f.family}-${f.role}-${i}`} className="flex items-center justify-between gap-2">
@@ -75,7 +77,7 @@ export function ExtractionPanel({
       </section>
 
       <section>
-        <span className="eyebrow text-body">Espaciado</span>
+        <span className="eyebrow text-body">{t("extraction.spacing")}</span>
         <p className="mt-1 font-mono text-sm text-body">
           {tokens.spacing.common.map((s) => `${s}px`).join(" · ")}
         </p>
@@ -84,7 +86,7 @@ export function ExtractionPanel({
       {zoomed && (
         <ScreenshotModal
           src={screenshot}
-          alt="Captura ampliada de la web"
+          alt={t("extraction.zoomedAlt")}
           onClose={() => setZoomed(false)}
         />
       )}

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { UIMessage } from "ai";
 import { ImageUploader } from "./image-uploader";
+import { useT } from "@/lib/i18n/context";
 
 /**
  * Panel de chat con estética Coinbase (azul #0052ff, pills, redondeado) y layout
@@ -27,6 +28,7 @@ export function ChatPanel({
   onImagesChange: (next: string[]) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const t = useT();
 
   // Auto-scroll al fondo cuando llegan mensajes (como ChatGPT).
   useEffect(() => {
@@ -42,7 +44,7 @@ export function ChatPanel({
       {/* Header compacto */}
       <div className="flex items-center gap-2 border-b border-[--color-cb-hairline-soft] px-4 py-3">
         <span className="h-2 w-2 rounded-full bg-[--color-cb-blue]" />
-        <span className="text-sm font-semibold text-ink">Afinar diseño</span>
+        <span className="text-sm font-semibold text-ink">{t("chat.header")}</span>
       </div>
 
       {/* Mensajes — crecen hacia arriba; el contenedor empuja al fondo */}
@@ -52,11 +54,7 @@ export function ChatPanel({
             <span className="flex h-10 w-10 items-center justify-center rounded-[--radius-cb] bg-[--color-cb-surface-soft] text-lg">
               ✦
             </span>
-            <p className="max-w-[260px] text-sm text-body">
-              Describe cómo quieres tu diseño: “más oscuro”, “tipografía serif”,
-              “estilo minimalista”. Guiará la propuesta al pulsar{" "}
-              <span className="font-semibold text-ink">Generar</span>.
-            </p>
+            <p className="max-w-[260px] text-sm text-body">{t("chat.empty")}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -117,21 +115,19 @@ export function ChatPanel({
                 }
               }}
               rows={1}
-              placeholder="Escribe un mensaje…"
+              placeholder={t("chat.placeholder")}
               className="max-h-32 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none"
             />
             <button
               type="submit"
               disabled={busy || !input.trim()}
               className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-pill bg-[--color-cb-blue] text-on-primary transition-colors hover:bg-[--color-cb-blue-active] disabled:opacity-40"
-              aria-label="Enviar"
+              aria-label={t("chat.send")}
             >
               ↑
             </button>
           </div>
-          <p className="mt-1 px-1 text-[10px] text-muted">
-            Enter envía · Shift+Enter salto de línea
-          </p>
+          <p className="mt-1 px-1 text-[10px] text-muted">{t("chat.hint")}</p>
         </form>
       </div>
     </div>

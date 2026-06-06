@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/i18n/context";
 
 /** Acciones sobre la propuesta generada: copiar HTML, descargar DESIGN.md, regenerar. */
 export function ProposalActions({
@@ -17,6 +18,7 @@ export function ProposalActions({
   disabled?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const t = useT();
 
   async function copyHtml() {
     try {
@@ -44,13 +46,13 @@ export function ProposalActions({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button className={btn} onClick={copyHtml} disabled={disabled}>
-        {copied ? "¡Copiado!" : "Copiar HTML"}
+        {copied ? t("proposal.copied") : t("proposal.copy")}
       </button>
       <button className={btn} onClick={downloadDesignMd} disabled={disabled}>
-        Descargar DESIGN.md
+        {t("proposal.download")}
       </button>
       <button className={btn} onClick={onRegenerate} disabled={disabled}>
-        Regenerar
+        {t("proposal.regenerate")}
       </button>
     </div>
   );

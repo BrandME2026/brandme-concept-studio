@@ -1,15 +1,18 @@
 "use client";
 
 import type { DesignProposal } from "@/lib/schemas";
+import { useT } from "@/lib/i18n/context";
+import type { TranslationKey } from "@/lib/i18n/es";
+import { ReasoningPanel } from "./reasoning-panel";
 
 /** Etapas de la propuesta, en el orden en que el modelo las completa. */
-const STEPS: { field: keyof DesignProposal; label: string }[] = [
-  { field: "name", label: "Nombrando el sistema" },
-  { field: "description", label: "Definiendo la estética" },
-  { field: "colors", label: "Eligiendo la paleta" },
-  { field: "typography", label: "Componiendo la tipografía" },
-  { field: "principles", label: "Redactando principios" },
-  { field: "html", label: "Maquetando el preview" },
+const STEPS: { field: keyof DesignProposal; labelKey: TranslationKey }[] = [
+  { field: "name", labelKey: "progress.naming" },
+  { field: "description", labelKey: "progress.aesthetic" },
+  { field: "colors", labelKey: "progress.palette" },
+  { field: "typography", labelKey: "progress.typography" },
+  { field: "principles", labelKey: "progress.principles" },
+  { field: "html", labelKey: "progress.preview" },
 ];
 
 /**
@@ -19,15 +22,18 @@ const STEPS: { field: keyof DesignProposal; label: string }[] = [
 export function GenerationProgress({
   partial,
   seen,
+  reasoning = "",
 }: {
   partial: Partial<DesignProposal> | null;
   seen: Set<string>;
+  reasoning?: string;
 }) {
+  const t = useT();
   return (
     <div className="flex h-full flex-col gap-5 overflow-y-auto p-6">
       <div className="flex items-center gap-3">
         <div className="bg-brand-gradient h-6 w-6 animate-pulse rounded-sm" />
-        <span className="eyebrow text-body">Generando propuesta…</span>
+        <span className="eyebrow text-body">{t("progress.eyebrow")}</span>
       </div>
 
       <ol className="space-y-2">
@@ -45,7 +51,7 @@ export function GenerationProgress({
                   done ? "bg-accent-mint" : "bg-hairline"
                 }`}
               />
-              {step.label}
+              {t(step.labelKey)}
             </li>
           );
         })}
@@ -74,10 +80,9 @@ export function GenerationProgress({
         </div>
       )}
 
-      <p className="text-xs text-body">
-        Puede tardar hasta un minuto. Estamos componiendo un diseño nuevo
-        inspirado en la web, no una copia.
-      </p>
+      <ReasoningPanel reasoning={reasoning} seen={seen} />
+
+      <p className="text-xs text-body">{t("progress.note")}</p>
     </div>
   );
 }

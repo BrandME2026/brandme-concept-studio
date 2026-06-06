@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useLocale, useT } from "@/lib/i18n/context";
 
 interface HistoryItem {
   id: string;
@@ -14,6 +15,8 @@ interface HistoryItem {
 export default function HistorialPage() {
   const [items, setItems] = useState<HistoryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { locale } = useLocale();
+  const t = useT();
 
   useEffect(() => {
     fetch("/api/history")
@@ -22,8 +25,8 @@ export default function HistorialPage() {
         if (j.success) setItems(j.data);
         else setError(j.error?.message ?? "Error");
       })
-      .catch(() => setError("No se pudo cargar el historial"));
-  }, []);
+      .catch(() => setError(t("history.loadError")));
+  }, [t]);
 
   return (
     <main className="flex flex-1 flex-col bg-canvas">
@@ -31,7 +34,7 @@ export default function HistorialPage() {
         <Link href="/" className="eyebrow text-body hover:opacity-70">
           ← BrandMe
         </Link>
-        <span className="text-sm font-semibold text-ink">Historial</span>
+        <span className="text-sm font-semibold text-ink">{t("history.title")}</span>
         <span className="w-16" />
       </header>
 
@@ -39,20 +42,18 @@ export default function HistorialPage() {
         {error && <p className="text-accent-orange">{error}</p>}
 
         {items === null && !error && (
-          <p className="text-sm text-body">Cargando…</p>
+          <p className="text-sm text-body">{t("history.loading")}</p>
         )}
 
         {items && items.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
             <div className="bg-brand-gradient h-12 w-12 rounded-[--radius-cb]" />
-            <p className="text-sm text-body">
-              Aún no has generado propuestas. Vuelve al inicio y crea la primera.
-            </p>
+            <p className="text-sm text-body">{t("history.empty")}</p>
             <Link
               href="/"
               className="rounded-pill bg-[--color-cb-blue] px-4 py-2 text-sm font-semibold text-on-primary"
             >
-              Crear propuesta
+              {t("history.create")}
             </Link>
           </div>
         )}
@@ -79,7 +80,7 @@ export default function HistorialPage() {
                   <p className="truncate font-semibold text-ink">{it.name}</p>
                   <p className="truncate text-xs text-muted">{it.url}</p>
                   <p className="mt-1 text-[11px] text-muted">
-                    {new Date(it.createdAt).toLocaleString("es")}
+                    {new Date(it.createdAt).toLocaleString(locale)}
                   </p>
                 </div>
               </Link>

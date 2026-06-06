@@ -4,6 +4,8 @@
  * IA del flujo es /api/resolve (marca → URL oficial), invocado desde onboarding-chat.
  */
 
+import type { TranslationKey } from "@/lib/i18n/es";
+
 export const BRANDS = [
   "Burger King",
   "Anytime Fitness",
@@ -13,11 +15,15 @@ export const BRANDS = [
   "Domino's",
 ] as const;
 
+/**
+ * Perfiles de inversor. `value` es el valor canónico (en inglés) que viaja al brief del
+ * LLM; `labelKey` es la clave i18n que se muestra traducida en la UI.
+ */
 export const INVESTOR_PROFILES = [
-  "First-time owner",
-  "Multi-unit operator",
-  "Family-business successor",
-  "Mix of all three",
+  { value: "First-time owner", labelKey: "investor.firstTime" },
+  { value: "Multi-unit operator", labelKey: "investor.multiUnit" },
+  { value: "Family-business successor", labelKey: "investor.successor" },
+  { value: "Mix of all three", labelKey: "investor.mix" },
 ] as const;
 
 export interface OnboardingAnswers {
@@ -39,75 +45,73 @@ export type StepKey =
   | "positioning"
   | "confirm";
 
+/**
+ * Cada paso lleva CLAVES i18n (no texto). El componente las traduce con t(). El paso
+ * "first" es condicional: solo se muestra si se eligió más de una marca.
+ */
 export type Step =
   | {
       key: StepKey;
       kind: "text";
-      question: string;
-      placeholder: string;
+      questionKey: TranslationKey;
+      placeholderKey: TranslationKey;
       minLength?: number;
     }
-  | { key: StepKey; kind: "single"; question: string; options: readonly string[] }
-  | { key: StepKey; kind: "multi"; question: string; options: readonly string[] }
-  | { key: "confirm"; kind: "confirm"; question: string };
+  | { key: StepKey; kind: "single"; questionKey: TranslationKey }
+  | { key: StepKey; kind: "multi"; questionKey: TranslationKey; options: readonly string[] }
+  | { key: "confirm"; kind: "confirm"; questionKey: TranslationKey };
 
-/**
- * Pasos del wizard (en inglés, literal según el cliente). El paso "first" es
- * condicional: solo se muestra si se eligió más de una marca (lo decide el componente).
- */
 export const STEPS: Step[] = [
   {
     key: "name",
     kind: "text",
-    question: "What's your name and firm?",
-    placeholder: "e.g. Shawn Whitaker, Whitaker Franchise",
+    questionKey: "onboarding.step.name",
+    placeholderKey: "onboarding.step.name.placeholder",
   },
   {
     key: "brand",
     kind: "multi",
-    question: "Which franchise brand do you want to launch first?",
+    questionKey: "onboarding.step.brand",
     options: BRANDS,
   },
   {
     key: "first",
     kind: "single",
-    question: "Which one do we launch first?",
-    options: [], // se rellena en runtime con las marcas seleccionadas
+    questionKey: "onboarding.step.first",
   },
   {
     key: "markets",
     kind: "text",
-    question: "Which markets do you focus on for that brand?",
-    placeholder: "e.g. Dallas, Plano, Frisco",
+    questionKey: "onboarding.step.markets",
+    placeholderKey: "onboarding.step.markets.placeholder",
   },
   {
     key: "investor",
     kind: "single",
-    question: "What kind of investor profile is your sweet spot?",
-    options: INVESTOR_PROFILES,
+    questionKey: "onboarding.step.investor",
   },
   {
     key: "positioning",
     kind: "text",
-    question: "What's your positioning? What do you sell that nobody else does?",
-    placeholder: "e.g. Texas-only, owner-operator-first, operations-led",
+    questionKey: "onboarding.step.positioning",
+    placeholderKey: "onboarding.step.positioning.placeholder",
     minLength: 20,
   },
   {
     key: "confirm",
     kind: "confirm",
-    question: "Here's what happens next:",
+    questionKey: "onboarding.step.confirm",
   },
 ];
 
-/** Lo que el agente promete hacer tras "Yes, ship it" (mostrado en el paso de confirmación). */
-export const CONFIRM_ACTIONS = [
-  "Pull the FDD for the brand",
-  "Generate your franchise landing page",
-  "Spin up 100 SEO pages",
-  "Train an AMA agent on your offer",
-  "Set up your operations cockpit",
-] as const;
+/** Acciones prometidas tras "Yes, ship it", como claves i18n (en orden de visualización). */
+export const CONFIRM_ACTION_KEYS: TranslationKey[] = [
+  "onboarding.confirm.fdd",
+  "onboarding.confirm.page",
+  "onboarding.confirm.seo",
+  "onboarding.confirm.ama",
+  "onboarding.confirm.cockpit",
+];
 
 /** Clave de sessionStorage para pasar el brief al studio sin exponer datos en la URL. */
 export const BRIEF_STORAGE_KEY = "brandme:onboarding-brief";
