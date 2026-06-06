@@ -30,8 +30,9 @@ const leadSchema = z.object({
   email: z.string().trim().max(160).optional().default(""),
   message: z.string().trim().max(2000).optional().default(""),
   source: z.enum(["form", "agent"]).default("form"),
-  // Honeypot anti-bot: campo oculto que un humano deja vacío.
-  website: z.string().max(0).optional().default(""),
+  // Honeypot anti-bot: campo oculto que un humano deja vacío. No lo validamos con max(0)
+  // a propósito (eso daría pistas al bot); si viene relleno, respondemos 200 silencioso.
+  website: z.string().optional().default(""),
 });
 
 // Rate-limit muy básico en memoria (por instancia): frena spam evidente sin infra extra.
