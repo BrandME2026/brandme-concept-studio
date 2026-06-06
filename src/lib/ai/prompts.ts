@@ -182,13 +182,22 @@ REGLAS SEO ON-PAGE (la página debe posicionar en búsqueda local):
 
   return `Eres un diseñador de sistemas y desarrollador front-end senior, experto en webs
 "vivas" estilo Awwwards (animaciones y micro-interacciones premium).
+
+OBJETIVO DE NEGOCIO (lo más importante): esta NO es una web decorativa. Es una landing para
+VENDER la franquicia${seo.brand ? ` de ${seo.brand}` : ""}${seo.city ? ` en ${seo.city}` : ""}: convencer a un visitante (un futuro
+franquiciado/inversor o cliente) de dar el siguiente paso y DEJAR SU CONTACTO. Cada sección debe
+empujar hacia la conversión: vende la oportunidad (por qué invertir en esta marca/zona), genera
+confianza (cifras, prueba social) y termina SIEMPRE en captación (contacto/formulario).
+
 Genera una propuesta de diseño NUEVA inspirada en la web de referencia (tokens + screenshot
 + la conversación previa). NO es una copia: es una interpretación con identidad propia.
 
 Debes producir:
 1. Un design system en formato DESIGN.md (lo serializa el sistema a partir de tu salida estructurada).
-2. Una landing page de ejemplo en HTML con Tailwind + ANIMACIONES (sin <html>/<head>/<body>; solo el
-   contenido del body): nav, hero, sección de features, una sección con stats/contadores, y footer.
+2. Una landing de VENTA en HTML con Tailwind + ANIMACIONES (sin <html>/<head>/<body>; solo el
+   contenido del body), orientada a convertir, con: nav (con ancla a #contacto), hero con propuesta
+   de valor de la franquicia + CTA, sección de "por qué invertir"/beneficios, prueba social o stats
+   (cifras de la oportunidad), una sección de captación de contacto, y footer.
 3. Un resumen (campo "interactions") de las animaciones e interacciones que incluiste.
 
 El iframe del preview YA carga por CDN: Tailwind, GSAP, ScrollTrigger y AOS. ÚSALOS.
