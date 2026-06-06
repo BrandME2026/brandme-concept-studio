@@ -43,6 +43,19 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Bug de Next 16.1+ con Turbopack: el standalone OMITE los serverExternalPackages
+# (playwright) de node_modules, y playwright-core no encuentra browsers.json en runtime
+# (vercel/next.js#88844). Copiamos el store .pnpm de playwright (con sus symlinks -L
+# resueltos) y los enlaces top-level, garantizando que se resuelva en runtime.
+COPY --from=builder /app/node_modules/.pnpm/playwright-core@1.60.0 \
+  ./node_modules/.pnpm/playwright-core@1.60.0
+COPY --from=builder /app/node_modules/.pnpm/playwright@1.60.0 \
+  ./node_modules/.pnpm/playwright@1.60.0
+# Symlinks top-level (require("playwright") los resuelve al store).
+RUN mkdir -p node_modules \
+  && ln -sf .pnpm/playwright@1.60.0/node_modules/playwright node_modules/playwright \
+  && ln -sf .pnpm/playwright-core@1.60.0/node_modules/playwright-core node_modules/playwright-core
+
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
