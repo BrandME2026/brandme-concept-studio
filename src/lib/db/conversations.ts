@@ -40,6 +40,11 @@ async function ensureSchema(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_conversations_session
       ON conversations (session_id, updated_at DESC);
+    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS slug TEXT;
+    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS brand TEXT;
+    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS city TEXT;
+    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS meta_title TEXT;
+    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS meta_description TEXT;
   `);
   schemaReady = true;
 }
@@ -97,19 +102,29 @@ export async function saveConversation(
     designMd?: string | null;
     name?: string | null;
     screenshot?: string | null;
+    slug?: string | null;
+    brand?: string | null;
+    city?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
   },
 ): Promise<void> {
   await ensureSchema();
   await getPool().query(
     `UPDATE conversations SET
-       title          = COALESCE($3, title),
-       messages       = COALESCE($4::jsonb, messages),
-       url            = COALESCE($5, url),
-       generated_html = COALESCE($6, generated_html),
-       design_md      = COALESCE($7, design_md),
-       name           = COALESCE($8, name),
-       screenshot     = COALESCE($9, screenshot),
-       updated_at     = now()
+       title            = COALESCE($3, title),
+       messages         = COALESCE($4::jsonb, messages),
+       url              = COALESCE($5, url),
+       generated_html   = COALESCE($6, generated_html),
+       design_md        = COALESCE($7, design_md),
+       name             = COALESCE($8, name),
+       screenshot       = COALESCE($9, screenshot),
+       slug             = COALESCE($10, slug),
+       brand            = COALESCE($11, brand),
+       city             = COALESCE($12, city),
+       meta_title       = COALESCE($13, meta_title),
+       meta_description = COALESCE($14, meta_description),
+       updated_at       = now()
      WHERE id = $1 AND session_id = $2`,
     [
       id,
@@ -121,6 +136,11 @@ export async function saveConversation(
       patch.designMd ?? null,
       patch.name ?? null,
       patch.screenshot ?? null,
+      patch.slug ?? null,
+      patch.brand ?? null,
+      patch.city ?? null,
+      patch.metaTitle ?? null,
+      patch.metaDescription ?? null,
     ],
   );
 }
@@ -143,6 +163,33 @@ export async function getPublicConversationPage(
   const r = rows[0];
   if (!r || !r.html) return null;
   return { id: r.id, url: r.url, name: r.name, html: r.html };
+}
+
+export interface PublicPage {
+  id: string;
+  slug: string | null;
+  url: string | null;
+  name: string | null;
+  html: string;
+  screenshot: string | null;
+  brand: string | null;
+  city: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+}
+
+/** Página generada de una conversación por SLUG, SIN sesión (para /p/[slug]). */
+export async function getPublicConversationBySlug(slug: string): Promise<PublicPage | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<PublicPage & { html: string | null }>(
+    `SELECT id, slug, url, name, generated_html AS html, screenshot,
+            brand, city, meta_title AS "metaTitle", meta_description AS "metaDescription"
+     FROM conversations WHERE slug = $1 AND generated_html IS NOT NULL LIMIT 1`,
+    [slug],
+  );
+  const r = rows[0];
+  if (!r || !r.html) return null;
+  return { ...r, html: r.html };
 }
 
 /** Borra una conversación de la sesión. */

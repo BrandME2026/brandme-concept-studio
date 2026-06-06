@@ -9,6 +9,9 @@ interface Proposal {
   proposal: DesignProposal;
   designMd: string;
   html: string;
+  slug?: string | null;
+  brand?: string | null;
+  city?: string | null;
 }
 
 interface GenerateInput {
@@ -17,6 +20,8 @@ interface GenerateInput {
   brief: string;
   language: Locale;
   quality?: "rapido" | "alta";
+  /** Contexto de marca para personalización + SEO de la página generada. */
+  seo?: { brand?: string; city?: string; positioning?: string };
 }
 
 /**
@@ -53,6 +58,7 @@ export function useGeneration() {
           language: input.language,
           images: [],
           quality: input.quality ?? "alta",
+          seo: input.seo,
         }),
       });
       if (!res.ok || !res.body) {
@@ -83,7 +89,14 @@ export function useGeneration() {
           } else if (evt.type === "reasoning") {
             setReasoning((r) => r + evt.text);
           } else if (evt.type === "done") {
-            result = { proposal: evt.proposal, designMd: evt.designMd, html: evt.html };
+            result = {
+              proposal: evt.proposal,
+              designMd: evt.designMd,
+              html: evt.html,
+              slug: evt.slug ?? null,
+              brand: evt.brand ?? null,
+              city: evt.city ?? null,
+            };
             setProposal(result);
           } else if (evt.type === "error") {
             throw new Error(evt.message ?? "Error generando");

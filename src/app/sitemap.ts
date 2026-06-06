@@ -17,7 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const pages = await listAllGenerations(200);
       for (const p of pages) {
         entries.push({
-          url: `${SITE_URL}/p/${p.id}`,
+          url: `${SITE_URL}/p/${p.slug ?? p.id}`,
           lastModified: new Date(p.createdAt),
           changeFrequency: "monthly",
           priority: 0.6,

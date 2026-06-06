@@ -159,6 +159,11 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
           screenshot: extr.screenshot,
           brief,
           language: locale,
+          seo: {
+            brand: ctx.brand,
+            city: ctx.markets?.split(/[,;]/)[0]?.trim(),
+            positioning: ctx.positioning,
+          },
         });
         if (proposal) {
           void persist([], {
@@ -166,6 +171,11 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
             generatedHtml: proposal.html,
             designMd: proposal.designMd,
             name: proposal.proposal.name,
+            slug: proposal.slug,
+            brand: proposal.brand,
+            city: proposal.city,
+            metaTitle: proposal.proposal.seo?.metaTitle,
+            metaDescription: proposal.proposal.seo?.metaDescription,
           });
           return { ok: true as const, name: proposal.proposal.name };
         }

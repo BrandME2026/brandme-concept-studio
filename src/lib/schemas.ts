@@ -86,6 +86,19 @@ export const designProposalSchema = z.object({
     .describe(
       "Resumen breve en lenguaje natural de las animaciones e interacciones incluidas (ej: 'hero con fade GSAP, secciones con scroll-reveal, menú móvil y tabs funcionales').",
     ),
+  seo: z
+    .object({
+      metaTitle: z
+        .string()
+        .describe("Title SEO ≤60 chars con marca + ciudad, ej. 'Abre tu Burger King en Dallas'"),
+      metaDescription: z
+        .string()
+        .describe("Meta description ≤155 chars, persuasiva, con marca + ciudad + beneficio"),
+      keywords: z
+        .array(z.string())
+        .describe("5-8 keywords locales, ej. 'franquicia Burger King Dallas', 'abrir BK Texas'"),
+    })
+    .describe("Metadatos SEO para el <head> de la página pública"),
 });
 
 export type DesignProposal = z.infer<typeof designProposalSchema>;

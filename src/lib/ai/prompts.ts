@@ -87,12 +87,32 @@ REGLAS:
 - Si la marca es ambigua o NO conoces su dominio oficial con seguridad, marca confidence: "low".
 - No inventes dominios. Ante la duda, confidence: "low".`;
 
+export interface SeoContext {
+  brand?: string;
+  city?: string;
+  positioning?: string;
+}
+
 export function generateSystemPrompt(
   language: Language = "es",
   imageCount = 0,
   hasLogo = false,
+  seo: SeoContext = {},
 ): string {
   const lang = LANGUAGE_LABEL[language];
+  const brandLine = seo.brand
+    ? `\n\nDATOS DE LA MARCA (úsalos LITERALMENTE en el copy, no inventes otros):
+- Marca: ${seo.brand}${seo.city ? `\n- Ciudad/mercado: ${seo.city}` : ""}${seo.positioning ? `\n- Posicionamiento: ${seo.positioning}` : ""}`
+    : "";
+  const seoRule = `\n
+REGLAS SEO ON-PAGE (la página debe posicionar en búsqueda local):
+- Exactamente UN <h1>, que incluya la marca${seo.city ? " y la ciudad" : ""} (ej: "Abre tu ${seo.brand ?? "[marca]"} en ${seo.city ?? "[ciudad]"}").
+- Jerarquía correcta: secciones con <h2>, subitems con <h3>. No saltes niveles.
+- Cada <img> con alt descriptivo que incluya marca/ciudad cuando aplique.
+- Copy ESPECÍFICO de la marca y el mercado, con keywords locales naturales
+  (ej: "franquicia ${seo.brand ?? "X"} en ${seo.city ?? "tu ciudad"}", "invertir en ${seo.brand ?? "X"}").
+  Texto real y útil, NADA de lorem ipsum ni relleno.
+- Produce también los campos seo.metaTitle, seo.metaDescription y seo.keywords (el sistema los pone en el <head>).`;
   const imagesRule =
     imageCount > 0
       ? `\n- El usuario ha subido ${imageCount} imagen(es) (las ves al final del mensaje, en orden).
@@ -135,8 +155,9 @@ REGLAS DEL HTML (web viva):
 - Micro-interacciones: hover (hover:scale-105, transiciones), estados de foco visibles.
 - Responsive (mobile-first), accesible (aria donde aplique), jerarquía clara.
 - IMPORTANTE: TODOS los textos y la descripción/principios deben estar en ${lang}. No mezcles idiomas.
-- NO copies textos de marca de la referencia; inventa copy genérico de ejemplo.${imagesRule}${logoRule}
-- Si defines <script>, usa SIEMPRE window.__init__ (no scripts sueltos que corran antes de las libs).`;
+- NO copies el diseño pixel a pixel de la referencia; es una interpretación con identidad propia.
+  Pero el COPY sí debe ser específico y real de la marca y el mercado (ver datos abajo), no genérico.${imagesRule}${logoRule}
+- Si defines <script>, usa SIEMPRE window.__init__ (no scripts sueltos que corran antes de las libs).${brandLine}${seoRule}`;
 }
 
 /** Bloque de contexto con los tokens, para el primer turno y la generación. */

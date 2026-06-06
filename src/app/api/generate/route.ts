@@ -14,6 +14,7 @@ import { injectImages } from "@/lib/preview/inject-images";
 import { getSessionId } from "@/lib/session";
 import { saveGeneration } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
+import { slugify } from "@/lib/seo/slug";
 import type { DesignTokens } from "@/types/design";
 
 export const runtime = "nodejs";
@@ -28,6 +29,14 @@ const generateBodySchema = z.object({
   images: z.array(z.string()).max(6).default([]),
   // Calidad/modelo (allowlist); "alta" = GPT-5.5.
   quality: z.enum(QUALITY_VALUES).default("alta"),
+  // Contexto de marca para personalización + SEO de la página generada.
+  seo: z
+    .object({
+      brand: z.string().optional(),
+      city: z.string().optional(),
+      positioning: z.string().optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -67,7 +76,7 @@ export async function POST(req: Request) {
   }
 
   const tokens = parsed.data.tokens as unknown as DesignTokens;
-  const { screenshot, brief, language, images, quality } = parsed.data;
+  const { screenshot, brief, language, images, quality, seo } = parsed.data;
 
   // Sesión para el historial (cookie); se lee aquí, fuera del stream.
   const sessionId = await getSessionId();
@@ -91,7 +100,7 @@ export async function POST(req: Request) {
         const result = streamText({
           model: getDesignModel(quality),
           experimental_output: Output.object({ schema: designProposalSchema }),
-          system: generateSystemPrompt(language, images.length, Boolean(tokens?.meta?.logo)),
+          system: generateSystemPrompt(language, images.length, Boolean(tokens?.meta?.logo), seo),
           messages: buildGenerateMessages(tokens, screenshot, brief, images),
           providerOptions: REASONING_PROVIDER_OPTIONS,
         });
@@ -130,12 +139,18 @@ export async function POST(req: Request) {
         // por el logo oficial extraído (data URI). Si no hay logo, se limpia el marcador.
         let html = injectImages(object.html, images);
         html = html.replace(/\{\{LOGO\}\}/g, tokens?.meta?.logo ?? "");
-        send({ type: "done", proposal: object, designMd, html });
+
+        const brand = seo?.brand ?? object.name;
+        const city = seo?.city ?? null;
+        const slugBase = slugify(brand, city);
 
         // Guardar en el historial (secundario: no romper la generación si falla).
+        // saveGeneration reserva el slug único; lo propagamos en el `done` para que el
+        // cliente persista el MISMO slug en la conversación.
+        let slug: string | null = null;
         if (isDbConfigured()) {
           try {
-            await saveGeneration({
+            const saved = await saveGeneration({
               sessionId,
               url: sourceUrl,
               name: object.name,
@@ -143,11 +158,19 @@ export async function POST(req: Request) {
               html,
               screenshot,
               interactions: object.interactions ?? null,
+              slug: slugBase,
+              brand,
+              city,
+              metaTitle: object.seo?.metaTitle ?? null,
+              metaDescription: object.seo?.metaDescription ?? null,
             });
+            slug = saved.slug;
           } catch (e) {
             console.error("[generate] no se pudo guardar en historial", e);
           }
         }
+
+        send({ type: "done", proposal: object, designMd, html, slug, brand, city });
       } catch (err) {
         console.error("[generate] fallo generando propuesta", err);
         send({ type: "error", message: "No se pudo generar la propuesta" });
