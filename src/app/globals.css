@@ -34,6 +34,8 @@
   /* ─── Tipografía ─── */
   --font-display: var(--font-display), "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  /* Serif para acentos itálicos de titulares (landing Francast.ai). */
+  --font-serif: Georgia, "Times New Roman", Cambria, serif;
 
   /* ─── Radios ─── */
   --radius-xs: 3.25px;
