@@ -40,6 +40,8 @@ export interface DesignTokens {
     title: string;
     viewport: { width: number; height: number };
     extractedAt: string;
+    /** Logo oficial de la marca como data URI (descargado en extract-design). */
+    logo?: string;
   };
   colors: {
     palette: ColorToken[];

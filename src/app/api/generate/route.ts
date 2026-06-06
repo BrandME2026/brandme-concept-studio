@@ -91,7 +91,7 @@ export async function POST(req: Request) {
         const result = streamText({
           model: getDesignModel(quality),
           experimental_output: Output.object({ schema: designProposalSchema }),
-          system: generateSystemPrompt(language, images.length),
+          system: generateSystemPrompt(language, images.length, Boolean(tokens?.meta?.logo)),
           messages: buildGenerateMessages(tokens, screenshot, brief, images),
           providerOptions: REASONING_PROVIDER_OPTIONS,
         });
@@ -126,8 +126,10 @@ export async function POST(req: Request) {
 
         const object = await result.output;
         const designMd = serializeDesignMd(object);
-        // Sustituir los marcadores {{IMG_n}} por las imágenes reales del usuario.
-        const html = injectImages(object.html, images);
+        // Sustituir los marcadores {{IMG_n}} por las imágenes del usuario y {{LOGO}}
+        // por el logo oficial extraído (data URI). Si no hay logo, se limpia el marcador.
+        let html = injectImages(object.html, images);
+        html = html.replace(/\{\{LOGO\}\}/g, tokens?.meta?.logo ?? "");
         send({ type: "done", proposal: object, designMd, html });
 
         // Guardar en el historial (secundario: no romper la generación si falla).

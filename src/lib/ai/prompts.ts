@@ -90,6 +90,7 @@ REGLAS:
 export function generateSystemPrompt(
   language: Language = "es",
   imageCount = 0,
+  hasLogo = false,
 ): string {
   const lang = LANGUAGE_LABEL[language];
   const imagesRule =
@@ -101,6 +102,11 @@ export function generateSystemPrompt(
   cuando haya imágenes del usuario disponibles. Usa cada imagen al menos una vez si encaja.`
       : `\n- Para imágenes decorativas usa bloques de color o gradientes con Tailwind; NO enlaces a
   imágenes externas que podrían no cargar.`;
+  const logoRule = hasLogo
+    ? `\n- LOGO OFICIAL: se extrajo el logo real de la marca. ÚSALO en el header/nav con EXACTAMENTE
+  este marcador como src: <img src="{{LOGO}}" alt="logo" class="h-8 w-auto" />. NO pongas una inicial
+  en un cuadro de color ni inventes un logo cuando este marcador esté disponible.`
+    : "";
 
   return `Eres un diseñador de sistemas y desarrollador front-end senior, experto en webs
 "vivas" estilo Awwwards (animaciones y micro-interacciones premium).
@@ -129,7 +135,7 @@ REGLAS DEL HTML (web viva):
 - Micro-interacciones: hover (hover:scale-105, transiciones), estados de foco visibles.
 - Responsive (mobile-first), accesible (aria donde aplique), jerarquía clara.
 - IMPORTANTE: TODOS los textos y la descripción/principios deben estar en ${lang}. No mezcles idiomas.
-- NO copies textos de marca de la referencia; inventa copy genérico de ejemplo.${imagesRule}
+- NO copies textos de marca de la referencia; inventa copy genérico de ejemplo.${imagesRule}${logoRule}
 - Si defines <script>, usa SIEMPRE window.__init__ (no scripts sueltos que corran antes de las libs).`;
 }
 

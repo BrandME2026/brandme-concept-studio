@@ -1,8 +1,37 @@
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import type { DesignTokens } from "@/types/design";
+import type { RawExtraction } from "./extractor-script";
 import { extractFromDom } from "./extractor-script";
 import { buildDesignTokens } from "./tokens";
-import { isBlockedHost } from "./ssrf-guard";
+import { isBlockedHost, assertSafeUrl } from "./ssrf-guard";
+
+const MAX_LOGO_BYTES = Number(process.env.MAX_LOGO_BYTES ?? 256 * 1024);
+
+/**
+ * Convierte el logo detectado a data URI. SVG inline → data URI directo; URL →
+ * descarga vía el navegador (reusa contexto + guard SSRF). Devuelve null si falla,
+ * es muy grande, o la URL no es segura. Nunca rompe la extracción.
+ */
+async function resolveLogo(page: Page, logo: RawExtraction["logo"]): Promise<string | undefined> {
+  if (!logo) return undefined;
+  try {
+    if (logo.kind === "svg" && logo.inlineSvg) {
+      if (logo.inlineSvg.length > MAX_LOGO_BYTES) return undefined;
+      return `data:image/svg+xml;utf8,${encodeURIComponent(logo.inlineSvg)}`;
+    }
+    if (!logo.src) return undefined;
+    await assertSafeUrl(logo.src); // resuelve DNS, bloquea IPs internas
+    const res = await page.request.get(logo.src, { timeout: 8000 });
+    if (!res.ok()) return undefined;
+    const buf = await res.body();
+    if (buf.length > MAX_LOGO_BYTES) return undefined;
+    const ct = res.headers()["content-type"]?.split(";")[0] || "image/png";
+    if (!ct.startsWith("image/")) return undefined;
+    return `data:${ct};base64,${buf.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
+}
 
 export interface ExtractionResult {
   tokens: DesignTokens;
@@ -11,6 +40,25 @@ export interface ExtractionResult {
 }
 
 const TIMEOUT = Number(process.env.EXTRACT_TIMEOUT_MS ?? 30000);
+
+/**
+ * Fallback de logo: favicon de alta resolución vía el servicio de Google (logo real
+ * de la marca, siempre disponible). Se descarga a data URI. Null si falla.
+ */
+async function faviconFallback(page: Page, url: string): Promise<string | undefined> {
+  try {
+    const host = new URL(url).hostname;
+    const fav = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`;
+    const res = await page.request.get(fav, { timeout: 8000 });
+    if (!res.ok()) return undefined;
+    const buf = await res.body();
+    if (buf.length < 100 || buf.length > MAX_LOGO_BYTES) return undefined; // <100B = placeholder vacío
+    const ct = res.headers()["content-type"]?.split(";")[0] || "image/png";
+    return `data:${ct};base64,${buf.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Navega a la URL con un navegador headless, espera la hidratación (apps Next.js
@@ -66,7 +114,12 @@ export async function extractDesign(url: string): Promise<ExtractionResult> {
     const buffer = await page.screenshot({ type: "jpeg", quality: 70 });
     const screenshot = `data:image/jpeg;base64,${buffer.toString("base64")}`;
 
+    // Logo del DOM; si no hay, fallback al favicon de alta resolución (logo real de
+    // la marca, funciona universalmente aunque el DOM no exponga un <img> de logo).
+    let logo = await resolveLogo(page, raw.logo);
+    if (!logo) logo = await faviconFallback(page, url);
     const tokens = buildDesignTokens(raw, url, new Date().toISOString());
+    if (logo) tokens.meta.logo = logo;
     return { tokens, screenshot };
   } finally {
     await browser?.close();

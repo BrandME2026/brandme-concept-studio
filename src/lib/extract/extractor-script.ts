@@ -34,6 +34,8 @@ export interface RawExtraction {
   maxWidth: string | null;
   usesFlex: boolean;
   usesGrid: boolean;
+  /** Logo de la marca detectado: URL absoluta (img/icon/og) o SVG inline serializado. */
+  logo: { src: string | null; kind: "img" | "svg" | "icon" | "og"; inlineSvg?: string } | null;
 }
 
 /**
@@ -130,6 +132,73 @@ export function extractFromDom(): RawExtraction {
 
   const bodyCs = getComputedStyle(document.body);
 
+  // ── Detección del logo de la marca ───────────────────────────────────────
+  const findLogo = (): RawExtraction["logo"] => {
+    const abs = (u: string) => {
+      try {
+        return new URL(u, location.href).href;
+      } catch {
+        return null;
+      }
+    };
+    // Nombre de marca derivado del hostname (frisby.com.co → "frisby").
+    const brand = location.hostname.replace(/^www\./, "").split(".")[0] ?? "";
+    const hint = (s: string | null) =>
+      !!s && /logo|brand/i.test(s) === true ? 2 : !!s && brand && s.toLowerCase().includes(brand) ? 2 : 0;
+
+    // 1) <img>/<svg> en header/nav con señal textual o link a la home.
+    const containers = document.querySelectorAll<HTMLElement>(
+      'header, nav, [role="banner"], [class*="header" i], [class*="nav" i]',
+    );
+    let best: { el: Element; score: number } | null = null;
+    containers.forEach((c) => {
+      c.querySelectorAll<HTMLElement>("img, svg").forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 16 || rect.height < 16) return;
+        if (/icon|social/i.test(el.className?.toString() ?? "")) return;
+        let score = 1;
+        if (el.tagName === "IMG") {
+          const img = el as HTMLImageElement;
+          score += hint(img.getAttribute("alt")) + hint(img.className) + hint(img.id);
+        } else {
+          score += hint(el.className?.toString() ?? "") + hint(el.id);
+        }
+        const a = el.closest("a");
+        if (a && (a.getAttribute("href") === "/" || a.href === location.origin + "/")) score += 2;
+        if (!best || score > best.score) best = { el, score };
+      });
+    });
+    if (best) {
+      const { el } = best as { el: Element };
+      if (el.tagName === "IMG") {
+        const src = abs((el as HTMLImageElement).src);
+        if (src) return { src, kind: "img" };
+      } else {
+        return { src: null, kind: "svg", inlineSvg: new XMLSerializer().serializeToString(el) };
+      }
+    }
+
+    // 2) apple-touch-icon / icon de mayor resolución.
+    const icons = Array.from(
+      document.querySelectorAll<HTMLLinkElement>('link[rel~="apple-touch-icon"], link[rel~="icon"]'),
+    )
+      .map((l) => ({ href: l.href, size: parseInt(l.getAttribute("sizes")?.split("x")[0] ?? "0", 10) }))
+      .filter((i) => i.href)
+      .sort((a, b) => b.size - a.size);
+    if (icons[0] && icons[0].size >= 32) {
+      const src = abs(icons[0].href);
+      if (src) return { src, kind: "icon" };
+    }
+
+    // 3) og:image como último recurso.
+    const og = document.querySelector<HTMLMetaElement>('meta[property="og:image"]')?.content;
+    if (og) {
+      const src = abs(og);
+      if (src) return { src, kind: "og" };
+    }
+    return null;
+  };
+
   return {
     title: document.title,
     viewport: { width: window.innerWidth, height: window.innerHeight },
@@ -146,5 +215,6 @@ export function extractFromDom(): RawExtraction {
     maxWidth,
     usesFlex,
     usesGrid,
+    logo: findLogo(),
   };
 }
