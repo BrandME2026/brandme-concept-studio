@@ -97,6 +97,14 @@ export async function POST(req: Request) {
             .string()
             .optional()
             .describe("Posicionamiento o cliente ideal, si surgió"),
+          whatsapp: z
+            .string()
+            .optional()
+            .describe("Número de WhatsApp donde el consultor quiere recibir interesados (con código de país, ej. +34600...). Si no lo dio, omitir."),
+          email: z
+            .string()
+            .optional()
+            .describe("Correo donde recibir interesados, si lo dio. Si no, omitir."),
         }),
       }),
       refineDesign: tool({

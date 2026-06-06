@@ -67,6 +67,12 @@ export function ConversationSidebar({
       </div>
 
       <Link
+        href="/leads"
+        className="mx-3 mb-1 rounded-lg border border-white/15 px-3 py-2 text-left text-sm text-body transition-colors hover:border-accent-periwinkle hover:text-on-dark"
+      >
+        {t("leads.navLink")}
+      </Link>
+      <Link
         href="/webs"
         className="mx-3 mb-4 rounded-lg border border-white/15 px-3 py-2 text-left text-sm text-body transition-colors hover:border-accent-periwinkle hover:text-on-dark"
       >

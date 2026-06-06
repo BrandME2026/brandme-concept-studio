@@ -15,6 +15,7 @@ import { getSessionId } from "@/lib/session";
 import { saveGeneration, findGenerationByBrandCity } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
 import { slugify } from "@/lib/seo/slug";
+import { buildWhatsAppLink, buildMailtoLink } from "@/lib/seo/contact-links";
 import type { DesignTokens } from "@/types/design";
 
 export const runtime = "nodejs";
@@ -35,6 +36,8 @@ const generateBodySchema = z.object({
       brand: z.string().optional(),
       city: z.string().optional(),
       positioning: z.string().optional(),
+      whatsapp: z.string().optional(),
+      email: z.string().optional(),
     })
     .optional(),
 });
@@ -166,6 +169,13 @@ export async function POST(req: Request) {
         const city = seo?.city ?? null;
         const slugBase = slugify(brand, city);
 
+        // CONTACTO (captación): sustituir los marcadores por enlaces reales. Si el consultor
+        // no dio el dato, el marcador se limpia (el botón no aparece) — nada inventado.
+        const waLink = buildWhatsAppLink(seo?.whatsapp, brand, city);
+        const mailLink = buildMailtoLink(seo?.email, brand, city);
+        html = html.replace(/\{\{WHATSAPP_URL\}\}/g, waLink);
+        html = html.replace(/\{\{EMAIL\}\}/g, mailLink);
+
         // Guardar en el historial (secundario: no romper la generación si falla).
         // saveGeneration reserva el slug único; lo propagamos en el `done` para que el
         // cliente persista el MISMO slug en la conversación.
@@ -185,6 +195,8 @@ export async function POST(req: Request) {
               city,
               metaTitle: object.seo?.metaTitle ?? null,
               metaDescription: object.seo?.metaDescription ?? null,
+              whatsapp: seo?.whatsapp ?? null,
+              email: seo?.email ?? null,
             });
             slug = saved.slug;
           } catch (e) {

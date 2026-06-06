@@ -9,8 +9,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // Conversaciones e historial son privados; no indexar.
-      disallow: ["/c/", "/historial", "/api/"],
+      // Conversaciones, historial, leads y embeds son privados/funcionales; no indexar.
+      disallow: ["/c/", "/historial", "/leads", "/embed/", "/api/"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };

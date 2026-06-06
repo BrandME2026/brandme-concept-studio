@@ -48,6 +48,8 @@ async function ensureSchema(): Promise<void> {
     ALTER TABLE generations ADD COLUMN IF NOT EXISTS city TEXT;
     ALTER TABLE generations ADD COLUMN IF NOT EXISTS meta_title TEXT;
     ALTER TABLE generations ADD COLUMN IF NOT EXISTS meta_description TEXT;
+    ALTER TABLE generations ADD COLUMN IF NOT EXISTS whatsapp TEXT;
+    ALTER TABLE generations ADD COLUMN IF NOT EXISTS email TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_generations_slug
       ON generations (slug) WHERE slug IS NOT NULL;
   `);
@@ -81,13 +83,15 @@ export async function saveGeneration(input: {
   city?: string | null;
   metaTitle?: string | null;
   metaDescription?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
 }): Promise<{ id: string; slug: string | null }> {
   await ensureSchema();
   const slug = input.slug ? await uniqueSlug(input.slug) : null;
   const { rows } = await getPool().query<{ id: string }>(
     `INSERT INTO generations (session_id, url, name, design_md, html, screenshot, interactions,
-       slug, brand, city, meta_title, meta_description)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+       slug, brand, city, meta_title, meta_description, whatsapp, email)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
     [
       input.sessionId,
       input.url,
@@ -101,6 +105,8 @@ export async function saveGeneration(input: {
       input.city ?? null,
       input.metaTitle ?? null,
       input.metaDescription ?? null,
+      input.whatsapp ?? null,
+      input.email ?? null,
     ],
   );
   return { id: rows[0].id, slug };

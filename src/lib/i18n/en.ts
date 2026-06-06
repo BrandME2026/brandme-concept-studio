@@ -151,6 +151,18 @@ export const en: Record<TranslationKey, string> = {
   "history.empty": "You haven't generated proposals yet. Go back home and create the first one.",
   "history.create": "Create proposal",
 
+  // Leads (captured prospects)
+  "leads.title": "Prospects",
+  "leads.loading": "Loading prospects…",
+  "leads.empty": "No prospects yet. When someone contacts you from your pages, they'll show up here.",
+  "leads.create": "Create a page →",
+  "leads.col.name": "Name",
+  "leads.col.contact": "Contact",
+  "leads.col.page": "Page",
+  "leads.col.message": "Message",
+  "leads.col.date": "Date",
+  "leads.navLink": "📩 Prospects",
+
   // Home chat (full-screen conversational interface)
   "hc.greeting": "Which franchise brand do you want to launch today?",
   "hc.subtitle":

@@ -56,8 +56,12 @@ CONOCE AL USUARIO ANTES DE CREAR (esto es importante):
   · la MARCA de franquicia que quiere lanzar,
   · los mercados/ciudades donde opera,
   · y si surge: su tipo de cliente ideal o qué lo diferencia (posicionamiento).
+- CONTACTO PARA CAPTAR INTERESADOS (importante para que la página VENDA): antes de confirmar,
+  pregunta con naturalidad a qué WhatsApp y/o correo quiere que le lleguen los interesados en la
+  franquicia (ej. "¿A qué WhatsApp o correo quieres que te escriban los interesados?"). La página
+  llevará botones de contacto con ese dato. Pasa whatsapp/email a launchBrand si los da.
 - Tú decides qué preguntar según fluya; lo mínimo imprescindible es el nombre y la marca. Si el
-  usuario tiene prisa o ya dio todo, no insistas con lo demás.
+  usuario tiene prisa o ya dio todo, no insistas con lo demás (el contacto se puede añadir luego).
 
 CONFIRMA Y LUEGO CREA:
 - Cuando tengas lo suficiente, RESUME en una frase lo que entendiste y PIDE confirmación
@@ -91,6 +95,8 @@ export interface SeoContext {
   brand?: string;
   city?: string;
   positioning?: string;
+  whatsapp?: string;
+  email?: string;
 }
 
 // Ángulos de layout/estructura para diversificar. Cada generación toma uno (por marca)
@@ -144,6 +150,31 @@ REGLAS SEO ON-PAGE (la página debe posicionar en búsqueda local):
   este marcador como src: <img src="{{LOGO}}" alt="logo" class="h-8 w-auto" />. NO pongas una inicial
   en un cuadro de color ni inventes un logo cuando este marcador esté disponible.`
     : "";
+  // CONTACTO (captación de interesados): la página debe CONVERTIR. Solo si hay dato.
+  const hasWa = Boolean(seo.whatsapp);
+  const hasEmail = Boolean(seo.email);
+  const contactRule =
+    hasWa || hasEmail
+      ? `\n- CAPTACIÓN DE INTERESADOS (la página debe VENDER la franquicia): incluye CTAs de contacto
+  claros y visibles. Usa EXACTAMENTE estos marcadores como href (el sistema los sustituye por el
+  enlace real):${
+    hasWa
+      ? `\n  · WhatsApp: un botón FLOTANTE fijo abajo-derecha (estilo burbuja verde de WhatsApp, con icono
+    SVG y aria-label) con href="{{WHATSAPP_URL}}" target="_blank" rel="noopener", MÁS un botón de
+    WhatsApp dentro del hero. Texto tipo "Hablar por WhatsApp".`
+      : ""
+  }${
+    hasEmail
+      ? `\n  · Correo: un botón/enlace "Escríbenos" con href="{{EMAIL}}" en el hero y en el footer.`
+      : ""
+  }
+  · FORMULARIO: incluye una sección "Solicita información" (id="contacto") y coloca DENTRO,
+    centrado, EXACTAMENTE el marcador \`{{LEAD_FORM}}\` en su propia línea (el sistema lo
+    reemplaza por el formulario real de captura). Añade un enlace ancla a #contacto en el nav.
+  NO inventes números ni correos: usa SOLO los marcadores. Los CTAs deben destacar (color de marca).`
+      : `\n- CAPTACIÓN: incluye una sección "Solicita información" (id="contacto") con el marcador
+  \`{{LEAD_FORM}}\` centrado en su propia línea (el sistema lo reemplaza por el formulario real).
+  NO inventes WhatsApp ni correo; el formulario es el canal de contacto.`;
   // Diversificación: ángulo de estructura distinto por marca, para que no salgan clónicas.
   const variantSeed = `${seo.brand ?? ""}|${seo.city ?? ""}`;
   const variantRule = `\n- ESTRUCTURA DE ESTA PÁGINA (síguela para que tenga identidad propia y no sea genérica):
@@ -178,7 +209,7 @@ REGLAS DEL HTML (web viva):
 - IMPORTANTE: TODOS los textos y la descripción/principios deben estar en ${lang}. No mezcles idiomas.
 - NO copies el diseño pixel a pixel de la referencia; es una interpretación con identidad propia.
   Pero el COPY sí debe ser específico y real de la marca y el mercado (ver datos abajo), no genérico.${imagesRule}${logoRule}
-- Si defines <script>, usa SIEMPRE window.__init__ (no scripts sueltos que corran antes de las libs).${variantRule}${brandLine}${seoRule}`;
+- Si defines <script>, usa SIEMPRE window.__init__ (no scripts sueltos que corran antes de las libs).${contactRule}${variantRule}${brandLine}${seoRule}`;
 }
 
 /** Bloque de contexto con los tokens, para el primer turno y la generación. */

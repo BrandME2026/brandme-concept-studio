@@ -149,6 +149,18 @@ export const es = {
   "history.empty": "Aún no has generado propuestas. Vuelve al inicio y crea la primera.",
   "history.create": "Crear propuesta",
 
+  // Leads (interesados captados)
+  "leads.title": "Interesados",
+  "leads.loading": "Cargando interesados…",
+  "leads.empty": "Aún no hay interesados. Cuando alguien contacte desde tus páginas, aparecerá aquí.",
+  "leads.create": "Crear una página →",
+  "leads.col.name": "Nombre",
+  "leads.col.contact": "Contacto",
+  "leads.col.page": "Página",
+  "leads.col.message": "Mensaje",
+  "leads.col.date": "Fecha",
+  "leads.navLink": "📩 Interesados",
+
   // Home chat (interfaz conversacional full-screen)
   "hc.greeting": "¿Qué marca de franquicia quieres lanzar hoy?",
   "hc.subtitle":

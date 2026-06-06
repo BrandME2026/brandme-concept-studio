@@ -118,6 +118,8 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
       nameAndFirm?: string;
       markets?: string;
       positioning?: string;
+      whatsapp?: string;
+      email?: string;
     }) => {
       setLaunching(true);
       setSavedPage(null);
@@ -163,6 +165,8 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
             brand: ctx.brand,
             city: ctx.markets?.split(/[,;]/)[0]?.trim(),
             positioning: ctx.positioning,
+            whatsapp: ctx.whatsapp,
+            email: ctx.email,
           },
         });
         // Anti-duplicado: el servidor reusó una página existente (marca+ciudad ya

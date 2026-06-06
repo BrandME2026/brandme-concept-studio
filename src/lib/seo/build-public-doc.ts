@@ -41,6 +41,48 @@ export interface PublicDocMeta {
   lang?: "es" | "en";
 }
 
+/** iframe de primera parte con el formulario de captura. Va aquí (al servir) porque
+ *  necesita el slug, que solo se conoce en este punto. El iframe SÍ puede hacer fetch
+ *  a /api/leads (es nuestra app), a diferencia del HTML del LLM bajo sandbox. */
+function leadFormIframe(slug: string | null, brand: string | null, lang: "es" | "en"): string {
+  if (!slug) return "";
+  const qs = new URLSearchParams({ slug, brand: brand ?? "", lang }).toString();
+  // sandbox propio del iframe: allow-same-origin + allow-scripts para que el widget de
+  // primera parte pueda hacer fetch a /api/leads (el documento padre va sin same-origin).
+  return `<iframe src="/embed/lead-form?${qs}" title="Contacto" loading="lazy" sandbox="allow-same-origin allow-scripts allow-forms" style="width:100%;max-width:440px;border:0;height:430px;margin:0 auto;display:block"></iframe>`;
+}
+
+/** Burbuja flotante (abajo-izquierda) que abre el agente de captación en un iframe. */
+function floatingAgent(
+  slug: string,
+  brand: string | null,
+  city: string | null,
+  lang: "es" | "en",
+): string {
+  const qs = new URLSearchParams({ slug, brand: brand ?? "", city: city ?? "", lang }).toString();
+  const label = lang === "en" ? "Chat" : "Asesor";
+  // Toggle por JS inline (sin frameworks). El iframe carga lazy al abrir.
+  return `
+<div id="fc-agent" style="position:fixed;left:20px;bottom:20px;z-index:9998;font-family:system-ui,sans-serif">
+  <div id="fc-agent-box" style="display:none;width:360px;max-width:90vw;height:480px;max-height:70vh;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);overflow:hidden;margin-bottom:10px">
+    <iframe data-src="/embed/agent?${qs}" title="${esc(label)}" sandbox="allow-same-origin allow-scripts allow-forms" style="width:100%;height:100%;border:0"></iframe>
+  </div>
+  <button id="fc-agent-btn" type="button" aria-label="${esc(label)}" style="display:flex;align-items:center;gap:8px;background:#111;color:#fff;border:none;border-radius:999px;padding:12px 18px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25)">💬 ${esc(label)}</button>
+</div>
+<script>
+  (function(){
+    var btn=document.getElementById('fc-agent-btn'),box=document.getElementById('fc-agent-box');
+    var f=box&&box.querySelector('iframe'),loaded=false;
+    if(!btn||!box)return;
+    btn.addEventListener('click',function(){
+      var open=box.style.display==='block';
+      box.style.display=open?'none':'block';
+      if(!open&&!loaded&&f){f.src=f.getAttribute('data-src');loaded=true;}
+    });
+  })();
+</script>`;
+}
+
 export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
   const lang = meta.lang ?? "es";
   const title = meta.metaTitle || meta.name || "Francast.ai";
@@ -49,6 +91,15 @@ export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
     (meta.brand ? `${meta.brand}${meta.city ? ` en ${meta.city}` : ""} — Francast.ai` : "Francast.ai");
   const canonical = meta.slug ? `${SITE_URL}/p/${meta.slug}` : SITE_URL;
   const ogImage = meta.screenshot && meta.screenshot.startsWith("http") ? meta.screenshot : "";
+
+  // Sustituir el marcador del formulario por el iframe de captura (con el slug real).
+  const bodyHtml = html.replace(
+    /\{\{LEAD_FORM\}\}/g,
+    leadFormIframe(meta.slug, meta.brand, lang),
+  );
+
+  // Agente de captación flotante (burbuja abajo-izquierda; WhatsApp suele ir abajo-derecha).
+  const agentWidget = meta.slug ? floatingAgent(meta.slug, meta.brand, meta.city, lang) : "";
 
   // JSON-LD LocalBusiness con marca + ciudad (ayuda a Google a entender la página).
   const jsonLd = escapeJsonForScript(
@@ -87,7 +138,8 @@ ${ogImage ? `<meta property="og:image" content="${esc(ogImage)}">` : ""}
 <style>*{box-sizing:border-box} body{margin:0} [data-aos]{pointer-events:auto}</style>
 </head>
 <body>
-${html}
+${bodyHtml}
+${agentWidget}
 <script>
   (function () {
     function boot() {
