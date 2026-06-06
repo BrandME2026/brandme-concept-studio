@@ -44,8 +44,7 @@ export default function HistorialDetailPage({
             html={rec.html}
             designMd={rec.designMd}
             name={rec.name}
-            onRegenerate={() => {}}
-            disabled
+            shareId={rec.id}
           />
         ) : (
           <span className="w-16" />

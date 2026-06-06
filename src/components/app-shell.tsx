@@ -255,8 +255,8 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
 
   // ── Panel del chat ──────────────────────────────────────────────────────
   const chatPanel = (
-    <div className="flex h-full flex-col bg-canvas-dark text-on-dark">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5">
+    <div className="flex h-full min-h-0 flex-col bg-canvas-dark text-on-dark">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-5">
         <div className="mx-auto w-full max-w-2xl">
           {empty ? (
             <div className="flex flex-col items-center gap-5 pt-[12vh] text-center">
@@ -364,8 +364,9 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               html={proposal.html}
               designMd={proposal.designMd}
               name={proposal.proposal.name}
-              onRegenerate={() => {}}
-              disabled
+              shareId={convId}
+              onRegenerate={() => void runRefine(t("hc.regenerateBrief"))}
+              busy={gen.generating || launching}
             />
           </div>
           <div className="flex-1 overflow-hidden">
@@ -410,7 +411,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
       </div>
 
       {/* Móvil: tabs */}
-      <div className="flex flex-1 flex-col lg:hidden">
+      <div className="flex min-h-0 flex-1 flex-col lg:hidden">
         <div className="flex border-b border-hairline">
           {(
             [

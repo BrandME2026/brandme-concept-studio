@@ -125,6 +125,26 @@ export async function saveConversation(
   );
 }
 
+/** Página generada de una conversación, por id, SIN sesión (para compartir /p/[id]). */
+export async function getPublicConversationPage(
+  id: string,
+): Promise<{ id: string; url: string | null; name: string | null; html: string } | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{
+    id: string;
+    url: string | null;
+    name: string | null;
+    html: string | null;
+  }>(
+    `SELECT id, url, name, generated_html AS html
+     FROM conversations WHERE id = $1 AND generated_html IS NOT NULL`,
+    [id],
+  );
+  const r = rows[0];
+  if (!r || !r.html) return null;
+  return { id: r.id, url: r.url, name: r.name, html: r.html };
+}
+
 /** Borra una conversación de la sesión. */
 export async function deleteConversation(id: string, sessionId: string): Promise<void> {
   await ensureSchema();

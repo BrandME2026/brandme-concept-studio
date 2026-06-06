@@ -13,7 +13,7 @@ const jsonLd = {
 
 export default function Home() {
   return (
-    <main className="flex flex-1 flex-col">
+    <main className="flex h-[100dvh] flex-col overflow-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

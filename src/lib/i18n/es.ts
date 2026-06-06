@@ -123,6 +123,9 @@ export const es = {
   "proposal.copied": "¡Copiado!",
   "proposal.download": "Descargar DESIGN.md",
   "proposal.regenerate": "Regenerar",
+  "proposal.share": "Compartir",
+  "proposal.shared": "¡Link copiado!",
+  "hc.regenerateBrief": "Regenera la página con una variación fresca del diseño.",
 
   // Studio — error de extracción / genéricos
   "studio.extractError": "Error de extracción",

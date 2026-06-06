@@ -19,7 +19,7 @@ export default async function ConversationPage({
   if (!conv) redirect("/");
 
   return (
-    <main className="flex flex-1 flex-col">
+    <main className="flex h-[100dvh] flex-col overflow-hidden">
       <AppShell
         initial={{
           id: conv.id,

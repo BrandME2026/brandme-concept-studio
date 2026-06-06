@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPublicGeneration } from "@/lib/db/history";
+import { getPublicConversationPage } from "@/lib/db/conversations";
 import { isDbConfigured } from "@/lib/db/client";
 
 export const runtime = "nodejs";
@@ -17,7 +18,9 @@ export async function GET(
     );
   }
   try {
-    const rec = await getPublicGeneration(id);
+    // Primero en la galería (generations); si no, en conversaciones compartidas.
+    const rec =
+      (await getPublicGeneration(id)) ?? (await getPublicConversationPage(id));
     if (!rec) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "No encontrada" } },

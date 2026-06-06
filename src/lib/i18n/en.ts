@@ -125,6 +125,9 @@ export const en: Record<TranslationKey, string> = {
   "proposal.copied": "Copied!",
   "proposal.download": "Download DESIGN.md",
   "proposal.regenerate": "Regenerate",
+  "proposal.share": "Share",
+  "proposal.shared": "Link copied!",
+  "hc.regenerateBrief": "Regenerate the page with a fresh design variation.",
 
   // Studio — extraction error / generic
   "studio.extractError": "Extraction error",
