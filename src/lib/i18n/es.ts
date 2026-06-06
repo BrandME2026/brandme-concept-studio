@@ -146,6 +146,19 @@ export const es = {
   "history.empty": "Aún no has generado propuestas. Vuelve al inicio y crea la primera.",
   "history.create": "Crear propuesta",
 
+  // Home chat (interfaz conversacional full-screen)
+  "hc.greeting": "¿Qué marca de franquicia quieres lanzar hoy?",
+  "hc.subtitle":
+    "Cuéntame de tu negocio y te armo una página completa con IA: SEO, AMA y captación de leads.",
+  "hc.placeholder": "Escribe aquí… (ej. quiero lanzar Burger King en Dallas)",
+  "hc.send": "Enviar",
+  "hc.hint": "Enter envía · Shift+Enter salto de línea",
+  "hc.launching": "Preparando tu página…",
+  "hc.suggest1": "Quiero lanzar Burger King en Dallas",
+  "hc.suggest2": "¿Cómo funciona?",
+  "hc.suggest3": "Tengo varias marcas de franquicia",
+  "hc.resolveFailed": "No identifiqué la web oficial de {brand}. ¿Me pasas la URL?",
+
   // ── Landing larga (Francast.ai) ──────────────────────────────────────────
   // Nav
   "ll.nav.howItWorks": "Cómo funciona",

@@ -148,6 +148,19 @@ export const en: Record<TranslationKey, string> = {
   "history.empty": "You haven't generated proposals yet. Go back home and create the first one.",
   "history.create": "Create proposal",
 
+  // Home chat (full-screen conversational interface)
+  "hc.greeting": "Which franchise brand do you want to launch today?",
+  "hc.subtitle":
+    "Tell me about your business and I'll build a full AI-powered page: SEO, AMA and lead capture.",
+  "hc.placeholder": "Type here… (e.g. I want to launch Burger King in Dallas)",
+  "hc.send": "Send",
+  "hc.hint": "Enter sends · Shift+Enter for a new line",
+  "hc.launching": "Preparing your page…",
+  "hc.suggest1": "I want to launch Burger King in Dallas",
+  "hc.suggest2": "How does it work?",
+  "hc.suggest3": "I have several franchise brands",
+  "hc.resolveFailed": "I couldn't identify the official site for {brand}. Can you share the URL?",
+
   // ── Long landing (Francast.ai) ───────────────────────────────────────────
   // Nav
   "ll.nav.howItWorks": "How It Works",
