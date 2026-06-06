@@ -65,6 +65,13 @@ export function ConversationSidebar({
           ))
         )}
       </div>
+
+      <Link
+        href="/webs"
+        className="mx-3 mb-4 rounded-lg border border-white/15 px-3 py-2 text-left text-sm text-body transition-colors hover:border-accent-periwinkle hover:text-on-dark"
+      >
+        {t("webs.navLink")}
+      </Link>
     </aside>
   );
 }

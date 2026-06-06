@@ -12,10 +12,11 @@ interface GalleryItem {
   name: string;
   screenshot: string | null;
   createdAt: string;
+  slug?: string | null;
 }
 
 /** Galería de páginas REALES generadas (del historial). Agrupadas por categoría inferida. */
-export function Gallery() {
+export function Gallery({ showHeading = true }: { showHeading?: boolean } = {}) {
   const t = useT();
   const [items, setItems] = useState<GalleryItem[] | null>(null);
 
@@ -35,11 +36,13 @@ export function Gallery() {
   return (
     <section id="gallery" className="bg-canvas px-6 py-section md:px-8">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-12">
-        <SectionHeading
-          eyebrowKey="ll.gallery.eyebrow"
-          titleKey="ll.gallery.title"
-          introKey="ll.gallery.intro"
-        />
+        {showHeading && (
+          <SectionHeading
+            eyebrowKey="ll.gallery.eyebrow"
+            titleKey="ll.gallery.title"
+            introKey="ll.gallery.intro"
+          />
+        )}
 
         {items === null && (
           <p className="text-sm text-body">{t("ll.gallery.loading")}</p>
@@ -98,7 +101,7 @@ function PageCard({ item }: { item: GalleryItem }) {
   }
   return (
     <Link
-      href={`/p/${item.id}`}
+      href={`/p/${item.slug ?? item.id}`}
       className="group flex flex-col overflow-hidden rounded-lg border border-hairline transition-shadow hover:shadow-md"
     >
       {item.screenshot ? (

@@ -227,6 +227,13 @@ export const es = {
   "ll.gallery.emptyCta": "Empezar ahora →",
   "ll.gallery.viewPage": "Ver página →",
   "ll.gallery.count": "{n} páginas en vivo",
+  // Página pública /webs
+  "webs.eyebrow": "Galería pública",
+  "webs.title": "Webs creadas con Francast.ai",
+  "webs.intro":
+    "Cada tarjeta es una página de marketing real, generada por IA y publicada en vivo. Explora las que ya existen o crea la tuya.",
+  "webs.cta": "Crear la mía →",
+  "webs.navLink": "🌐 Galería pública",
 
   // Comparativa
   "ll.compare.old.eyebrow": "Hoy · La forma antigua",

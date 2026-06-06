@@ -229,6 +229,13 @@ export const en: Record<TranslationKey, string> = {
   "ll.gallery.emptyCta": "Get started →",
   "ll.gallery.viewPage": "View page →",
   "ll.gallery.count": "{n} live pages",
+  // Public /webs page
+  "webs.eyebrow": "Public gallery",
+  "webs.title": "Sites created with Francast.ai",
+  "webs.intro":
+    "Each card is a real AI-generated marketing page, published live. Browse the ones that already exist or create your own.",
+  "webs.cta": "Create mine →",
+  "webs.navLink": "🌐 Public gallery",
 
   // Comparison
   "ll.compare.old.eyebrow": "Today · The old way",
