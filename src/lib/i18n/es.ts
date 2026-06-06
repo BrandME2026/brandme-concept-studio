@@ -158,6 +158,12 @@ export const es = {
   "hc.suggest2": "¿Cómo funciona?",
   "hc.suggest3": "Tengo varias marcas de franquicia",
   "hc.resolveFailed": "No identifiqué la web oficial de {brand}. ¿Me pasas la URL?",
+  "hc.artifactEmpty": "Tu página aparecerá aquí en cuanto la generemos.",
+
+  // Sidebar de conversaciones
+  "cv.new": "Nueva conversación",
+  "cv.empty": "Aún no hay conversaciones.",
+  "cv.untitled": "Sin título",
 
   // ── Landing larga (Francast.ai) ──────────────────────────────────────────
   // Nav

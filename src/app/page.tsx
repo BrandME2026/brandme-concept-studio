@@ -1,8 +1,7 @@
-import { HomeChat } from "@/components/home-chat";
+import { AppShell } from "@/components/app-shell";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-/** Datos estructurados (JSON-LD) mínimos para SEO. */
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -19,7 +18,7 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <HomeChat />
+      <AppShell />
     </main>
   );
 }

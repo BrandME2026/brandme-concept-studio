@@ -2,7 +2,6 @@ import { convertToModelMessages, streamText, tool, type UIMessage } from "ai";
 import { z } from "zod";
 import { chatModel, assertOpenRouterConfigured } from "@/lib/ai/openrouter";
 import {
-  CHAT_SYSTEM_PROMPT,
   conversationalChatPrompt,
   tokensContext,
   type Language,
@@ -69,26 +68,20 @@ export async function POST(req: Request) {
   const { messages, tokens, language = "es" } = body;
   const modelMessages = await convertToModelMessages(messages);
 
-  // Chat del STUDIO (con tokens): afinar diseño, comportamiento de hoy, sin tool.
-  if (tokens) {
-    const result = streamText({
-      model: chatModel,
-      system: `${CHAT_SYSTEM_PROMPT}\n\n${tokensContext(tokens)}`,
-      messages: modelMessages,
-    });
-    return result.toUIMessageStreamResponse();
-  }
+  // Un solo chat unificado. System conversacional; si ya hay página (llegan tokens),
+  // se añade el contexto de diseño para afinar.
+  const baseSystem = conversationalChatPrompt(language, await realExamples());
+  const system = tokens ? `${baseSystem}\n\n${tokensContext(tokens)}` : baseSystem;
 
-  // Chat de la HOME (sin tokens): agente conversacional con la tool launchBrand.
+  // Tools sin execute: el efecto ocurre en el cliente (onToolCall).
   const result = streamText({
     model: chatModel,
-    system: conversationalChatPrompt(language, await realExamples()),
+    system,
     messages: modelMessages,
     tools: {
-      // Sin execute: el efecto (resolver marca → ir al studio) ocurre en el cliente.
       launchBrand: tool({
         description:
-          "Lanza el flujo para generar la página de una marca. Llámala SOLO tras conocer al usuario y recibir su confirmación. Pasa el contexto que reuniste para personalizar la página.",
+          "Lanza el flujo para generar la página de una marca. Llámala SOLO tras conocer al usuario y recibir su confirmación, y cuando AÚN no hay página generada. Pasa el contexto reunido.",
         inputSchema: z.object({
           brand: z.string().describe("Nombre de la marca a lanzar, ej. 'Burger King'"),
           nameAndFirm: z
@@ -100,6 +93,15 @@ export async function POST(req: Request) {
             .string()
             .optional()
             .describe("Posicionamiento o cliente ideal, si surgió"),
+        }),
+      }),
+      refineDesign: tool({
+        description:
+          "Regenera la página YA generada con un cambio de diseño. Llámala solo si ya existe una página y el usuario pide un ajuste visual.",
+        inputSchema: z.object({
+          instructions: z
+            .string()
+            .describe("Qué cambiar, ej. 'más oscuro, tipografía serif'"),
         }),
       }),
     },

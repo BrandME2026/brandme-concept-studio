@@ -9,8 +9,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // El studio y el historial son herramientas privadas, no contenido indexable.
-      disallow: ["/studio", "/historial", "/api/"],
+      // Conversaciones e historial son privados; no indexar.
+      disallow: ["/c/", "/historial", "/api/"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };

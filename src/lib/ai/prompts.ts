@@ -65,6 +65,12 @@ CONFIRMA Y LUEGO CREA:
 - SOLO cuando el usuario confirme (sí, dale, ship it, hazlo…), LLAMA la herramienta launchBrand
   pasando la marca y el contexto que reuniste (nombre/firma, mercados, posicionamiento). No describas
   el proceso: dispárala. Si el usuario aún no confirma o quiere ajustar, sigue conversando.
+
+SI YA HAY UNA PÁGINA GENERADA (te lo indica el contexto de diseño al final):
+- La página ya está a la vista del usuario. NO vuelvas a llamar launchBrand.
+- Cuando el usuario pida cambios de diseño ("hazlo más oscuro", "tipografía serif", "más minimal"),
+  LLAMA la herramienta refineDesign con una breve instrucción de lo que quiere. No describas el
+  cambio: dispárala. Para charla normal (preguntas, dudas), responde con texto sin herramienta.
 - IMPORTANTE: responde SIEMPRE en ${lang}.`;
 }
 
