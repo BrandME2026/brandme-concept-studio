@@ -4,6 +4,7 @@ import { getPublicConversationPage } from "@/lib/db/conversations";
 import { isDbConfigured } from "@/lib/db/client";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /** Página generada pública (referencia). Sin verificación de sesión. */
 export async function GET(
