@@ -46,20 +46,17 @@ export function getDesignModel(quality: Quality = "alta") {
 /** Modelo por defecto (alta calidad) para usos que no eligen calidad. */
 export const designModel = getDesignModel("alta");
 
-// Reasoning tokens de OpenRouter (chain-of-thought) para narrar "qué piensa el agente".
-// Default 'low': para GENERAR HTML, un reasoning extenso dispara la latencia (minutos)
-// sin mejorar proporcionalmente el resultado. Configurable por env si se quiere más.
-const REASONING_EFFORT = (process.env.OPENROUTER_REASONING_EFFORT ?? "low") as
-  | "xhigh"
-  | "high"
-  | "medium"
-  | "low"
-  | "minimal";
+// Reasoning tokens de OpenRouter (chain-of-thought). DESACTIVADO por defecto en
+// generación: con reasoning activo el modelo emitía 130+ pasos de pensamiento antes del
+// HTML → esperas de varios minutos, inaceptable. El panel "razonamiento del agente" es
+// cosmético; no justifica esa latencia. Reactivable por env (OPENROUTER_REASONING_EFFORT).
+const REASONING_EFFORT = process.env.OPENROUTER_REASONING_EFFORT as
+  | "xhigh" | "high" | "medium" | "low" | "minimal" | undefined;
 
-/** providerOptions para activar reasoning en streamText (solo en /api/generate). */
-export const REASONING_PROVIDER_OPTIONS = {
-  openrouter: { reasoning: { enabled: true, effort: REASONING_EFFORT } },
-} as const;
+/** providerOptions para streamText. undefined (sin reasoning) salvo que se pida por env. */
+export const REASONING_PROVIDER_OPTIONS = REASONING_EFFORT
+  ? { openrouter: { reasoning: { enabled: true, effort: REASONING_EFFORT } } }
+  : undefined;
 
 // Modelo barato para tareas livianas (chat de afinado y resolución marca→URL): no
 // requieren el juicio del modelo premium. DeepSeek V4 Flash da el mejor calidad/precio
