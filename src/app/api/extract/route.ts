@@ -2,12 +2,30 @@ import { NextResponse } from "next/server";
 import { urlInputSchema } from "@/lib/schemas";
 import { extractDesign } from "@/lib/extract/extract-design";
 import { assertSafeUrl } from "@/lib/extract/ssrf-guard";
+import {
+  rateLimit,
+  clientKey,
+  llmBudget,
+  tooMany,
+  budgetExceeded,
+  LIMITS,
+  acquireExtractSlot,
+  releaseExtractSlot,
+} from "@/lib/security/rate-limit";
 
 // Playwright requiere el runtime de Node (no edge).
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  // Anti-abuso: rate-limit por IP + tope diario (es pesado en RAM) + semáforo de concurrencia.
+  const rl = rateLimit(`extract:${clientKey(request)}`, LIMITS.extract);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+  if (!llmBudget.tryConsume()) {
+    console.warn("[extract] tope diario alcanzado", llmBudget.status());
+    return budgetExceeded();
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -45,6 +63,13 @@ export async function POST(request: Request) {
     );
   }
 
+  // Semáforo: limita los browsers de Playwright simultáneos (protege la RAM).
+  if (!acquireExtractSlot()) {
+    return NextResponse.json(
+      { success: false, error: { code: "BUSY", message: "Servicio ocupado, intenta en unos segundos." } },
+      { status: 503, headers: { "Retry-After": "5" } },
+    );
+  }
   try {
     const data = await extractDesign(parsed.data.url);
     return NextResponse.json({ success: true, data });
@@ -61,5 +86,7 @@ export async function POST(request: Request) {
       },
       { status: 502 },
     );
+  } finally {
+    releaseExtractSlot();
   }
 }

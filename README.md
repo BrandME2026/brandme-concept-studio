@@ -92,6 +92,21 @@ en las variables del proyecto. La imagen base `mcr.microsoft.com/playwright` ya 
 - **Preview aislado**: el HTML generado se renderiza en un iframe `sandbox="allow-scripts"` *sin*
   `allow-same-origin` — sin acceso a cookies ni al DOM de la app.
 - **Secretos**: solo en variables de entorno; nunca en el cliente ni en el repo.
+- **Anti-abuso / protección de tokens** (endpoints públicos): rate-limit por IP en todos los
+  endpoints que cuestan dinero/recursos (`/api/generate`, `/api/extract`, `/api/agent`, `/api/chat`,
+  `/api/resolve`, `/api/leads`), **tope diario global** de operaciones caras (circuit-breaker que
+  corta la generación premium y la extracción al alcanzar `LLM_DAILY_CAP`), **semáforo** de
+  concurrencia de Playwright, y límites de tamaño (mensajes, brief, screenshot, query) anti-payload.
+  El rate-limit es en memoria (1ª capa; migrable a Redis). Captura de leads con honeypot + validación.
+- **Headers globales** (`src/middleware.ts`): HSTS, `X-Frame-Options: SAMEORIGIN` (anti-clickjacking),
+  `nosniff`, `Referrer-Policy`, `Permissions-Policy`. No tocan la CSP especial de `/p/*`.
+
+> ### ⚠️ Capa 0 — tope DURO de gasto en OpenRouter (configúralo TÚ, es lo más importante)
+> El rate-limit de la app es la 1ª capa, pero el tope real de dinero se pone en OpenRouter:
+> 1. Crea una **API key dedicada** para producción en el dashboard de OpenRouter.
+> 2. Ponle un **límite de gasto (credit limit)** mensual. Al alcanzarlo, la key deja de gastar →
+>    tu pérdida máxima ante cualquier ataque es ese límite.
+> 3. Activa **alertas de uso**. Así, aunque todo lo demás falle, no hay factura sorpresa.
 
 ## ⚙️ Variables de entorno
 
@@ -100,6 +115,16 @@ OPENROUTER_API_KEY=sk-or-...                       # requerida
 OPENROUTER_DEFAULT_MODEL=anthropic/claude-sonnet-4.6
 OPENROUTER_FALLBACK_MODELS=google/gemini-2.5-flash,openai/gpt-4o
 EXTRACT_TIMEOUT_MS=30000
+
+# Anti-abuso (todas opcionales; defaults sensatos). Ajustables en Railway sin redeploy.
+LLM_DAILY_CAP=300            # tope diario de operaciones caras (generate + extract)
+EXTRACT_CONCURRENCY=3        # máx. browsers de Playwright simultáneos
+RL_GENERATE_PER_MIN=5        # rate-limit por IP/min de cada endpoint
+RL_EXTRACT_PER_MIN=6
+RL_CHAT_PER_MIN=20
+RL_AGENT_PER_MIN=20
+RL_RESOLVE_PER_MIN=15
+RL_LEADS_PER_MIN=5
 ```
 
 ## 📝 Sobre getdesign

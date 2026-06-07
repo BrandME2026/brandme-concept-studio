@@ -5,6 +5,7 @@ export const urlInputSchema = z.object({
   url: z
     .string()
     .trim()
+    .max(2048)
     .url("Introduce una URL válida")
     .refine(
       (u) => u.startsWith("http://") || u.startsWith("https://"),
@@ -16,7 +17,7 @@ export type UrlInput = z.infer<typeof urlInputSchema>;
 
 /** Input del resolver: texto libre (nombre de cadena o URL). */
 export const resolveInputSchema = z.object({
-  query: z.string().trim().min(2, "Escribe al menos 2 caracteres"),
+  query: z.string().trim().min(2, "Escribe al menos 2 caracteres").max(200),
 });
 
 export type ResolveInput = z.infer<typeof resolveInputSchema>;

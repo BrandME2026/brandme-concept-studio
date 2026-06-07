@@ -3,6 +3,18 @@ import { z } from "zod";
 import { chatModel, assertOpenRouterConfigured } from "@/lib/ai/openrouter";
 import { saveLead, slugExists } from "@/lib/db/leads";
 import { isDbConfigured } from "@/lib/db/client";
+import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
+
+// Anti-payload-bomb: límites de la conversación (cada mensaje cuesta tokens reales).
+const MAX_MESSAGES = 30;
+const MAX_MSG_CHARS = 4000;
+
+/** Suma de caracteres de las partes de texto de un mensaje. */
+function msgChars(m: UIMessage): number {
+  return (m.parts ?? [])
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .reduce((n, p) => n + p.text.length, 0);
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +43,10 @@ const fail = (code: string, message: string, status: number) =>
   Response.json({ success: false, error: { code, message } }, { status });
 
 export async function POST(req: Request) {
+  // Rate-limit por IP (barato, pero igual acotado para que nadie abuse).
+  const rl = rateLimit(`agent:${clientKey(req)}`, LIMITS.agent);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+
   try {
     assertOpenRouterConfigured();
   } catch {
@@ -46,6 +62,11 @@ export async function POST(req: Request) {
 
   const { messages, slug, brand = "", city = "", language = "es" } = body;
   if (!slug) return fail("NO_SLUG", "Falta slug", 400);
+  if (!Array.isArray(messages) || messages.length === 0)
+    return fail("BAD_MESSAGES", "Mensajes inválidos", 400);
+  if (messages.length > MAX_MESSAGES) return fail("TOO_MANY_MESSAGES", "Conversación demasiado larga", 400);
+  if (messages.some((m) => msgChars(m) > MAX_MSG_CHARS))
+    return fail("MSG_TOO_LONG", "Mensaje demasiado largo", 400);
 
   const modelMessages = await convertToModelMessages(messages);
 

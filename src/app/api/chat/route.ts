@@ -9,9 +9,18 @@ import {
 import { isDbConfigured } from "@/lib/db/client";
 import { listAllGenerations } from "@/lib/db/history";
 import type { DesignTokens } from "@/types/design";
+import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+const MAX_MESSAGES = 40;
+const MAX_MSG_CHARS = 6000;
+function msgChars(m: UIMessage): number {
+  return (m.parts ?? [])
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .reduce((n, p) => n + p.text.length, 0);
+}
 
 interface ChatBody {
   messages: UIMessage[];
@@ -41,6 +50,9 @@ async function realExamples(): Promise<string> {
 }
 
 export async function POST(req: Request) {
+  const rl = rateLimit(`chat:${clientKey(req)}`, LIMITS.chat);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+
   try {
     assertOpenRouterConfigured();
   } catch {
@@ -66,6 +78,16 @@ export async function POST(req: Request) {
     );
   }
   const { messages, tokens, language = "es" } = body;
+  if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES)
+    return Response.json(
+      { success: false, error: { code: "BAD_MESSAGES", message: "Mensajes inválidos" } },
+      { status: 400 },
+    );
+  if (messages.some((m) => msgChars(m) > MAX_MSG_CHARS))
+    return Response.json(
+      { success: false, error: { code: "MSG_TOO_LONG", message: "Mensaje demasiado largo" } },
+      { status: 400 },
+    );
   const modelMessages = await convertToModelMessages(messages);
 
   // Un solo chat unificado. System conversacional; si ya hay página (llegan tokens),

@@ -16,28 +16,33 @@ import { saveGeneration, findGenerationByBrandCity } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
 import { slugify } from "@/lib/seo/slug";
 import { buildWhatsAppLink, buildMailtoLink } from "@/lib/seo/contact-links";
+import { rateLimit, clientKey, llmBudget, tooMany, budgetExceeded, LIMITS } from "@/lib/security/rate-limit";
 import type { DesignTokens } from "@/types/design";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
+// Topes de tamaño anti-payload-bomb (un solo request no debe inflar coste/RAM).
+const MAX_SCREENSHOT = 14_000_000; // ~14MB en base64 data-URI
+const MAX_IMG = 8_000_000;
+
 const generateBodySchema = z.object({
   tokens: tokensSchema,
-  screenshot: z.string(),
-  brief: z.string().default("Propón un diseño inspirado en esta web."),
+  screenshot: z.string().max(MAX_SCREENSHOT),
+  brief: z.string().max(2000).default("Propón un diseño inspirado en esta web."),
   language: z.enum(["es", "en"]).default("es"),
   // Imágenes del usuario (data URLs) para incrustar en el diseño generado.
-  images: z.array(z.string()).max(6).default([]),
+  images: z.array(z.string().max(MAX_IMG)).max(6).default([]),
   // Calidad/modelo (allowlist); "alta" = GPT-5.5.
   quality: z.enum(QUALITY_VALUES).default("alta"),
   // Contexto de marca para personalización + SEO de la página generada.
   seo: z
     .object({
-      brand: z.string().optional(),
-      city: z.string().optional(),
-      positioning: z.string().optional(),
-      whatsapp: z.string().optional(),
-      email: z.string().optional(),
+      brand: z.string().max(120).optional(),
+      city: z.string().max(120).optional(),
+      positioning: z.string().max(400).optional(),
+      whatsapp: z.string().max(40).optional(),
+      email: z.string().max(160).optional(),
     })
     .optional(),
 });
@@ -52,6 +57,14 @@ const generateBodySchema = z.object({
  *  {type:"error", message}
  */
 export async function POST(req: Request) {
+  // Anti-abuso: rate-limit por IP + tope diario global (operación CARA: GPT-5.5/Sonnet).
+  const rl = rateLimit(`generate:${clientKey(req)}`, LIMITS.generate);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+  if (!llmBudget.tryConsume()) {
+    console.warn("[generate] tope diario de LLM alcanzado", llmBudget.status());
+    return budgetExceeded();
+  }
+
   try {
     assertOpenRouterConfigured();
   } catch {

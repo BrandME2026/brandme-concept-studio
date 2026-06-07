@@ -3,6 +3,7 @@ import { z } from "zod";
 import { saveLead, slugExists, listLeadsForSession } from "@/lib/db/leads";
 import { isDbConfigured } from "@/lib/db/client";
 import { getSessionId } from "@/lib/session";
+import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,14 @@ const leadSchema = z.object({
   slug: z.string().min(1).max(80),
   name: z.string().trim().min(1).max(120),
   phone: z.string().trim().max(40).optional().default(""),
-  email: z.string().trim().max(160).optional().default(""),
+  // email opcional, pero si viene debe tener formato válido (string vacío permitido).
+  email: z
+    .string()
+    .trim()
+    .max(160)
+    .refine((v) => v === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), "Correo no válido")
+    .optional()
+    .default(""),
   message: z.string().trim().max(2000).optional().default(""),
   source: z.enum(["form", "agent"]).default("form"),
   // Honeypot anti-bot: campo oculto que un humano deja vacío. No lo validamos con max(0)
@@ -35,30 +43,15 @@ const leadSchema = z.object({
   website: z.string().optional().default(""),
 });
 
-// Rate-limit muy básico en memoria (por instancia): frena spam evidente sin infra extra.
-const hits = new Map<string, { n: number; ts: number }>();
-const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 5;
-function rateLimited(key: string): boolean {
-  const now = Date.now();
-  const cur = hits.get(key);
-  if (!cur || now - cur.ts > WINDOW_MS) {
-    hits.set(key, { n: 1, ts: now });
-    return false;
-  }
-  cur.n += 1;
-  return cur.n > MAX_PER_WINDOW;
-}
-
 const fail = (code: string, message: string, status: number) =>
   NextResponse.json({ success: false, error: { code, message } }, { status });
 
 export async function POST(request: Request) {
-  if (!isDbConfigured()) return fail("NO_DB", "No disponible", 503);
+  // Rate-limit PRIMERO (frena el abuso aunque la DB esté caída).
+  const rl = rateLimit(`leads:${clientKey(request)}`, LIMITS.leads);
+  if (!rl.ok) return tooMany(rl.retryAfter);
 
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (rateLimited(ip)) return fail("RATE_LIMITED", "Demasiados envíos, intenta luego", 429);
+  if (!isDbConfigured()) return fail("NO_DB", "No disponible", 503);
 
   let body: unknown;
   try {

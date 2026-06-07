@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { resolveInputSchema } from "@/lib/schemas";
 import { resolveBrandToUrl } from "@/lib/resolve/resolve-brand";
 import { assertOpenRouterConfigured } from "@/lib/ai/openrouter";
+import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function POST(request: Request) {
+  const rl = rateLimit(`resolve:${clientKey(request)}`, LIMITS.resolve);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+
   try {
     assertOpenRouterConfigured();
   } catch {
