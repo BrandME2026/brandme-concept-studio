@@ -17,11 +17,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     try {
       const pages = await listAllGenerations(200);
       for (const p of pages) {
+        // Image sitemap: solo screenshots servidos por http (Google ignora data-URIs).
+        const img = p.screenshot && p.screenshot.startsWith("http") ? [p.screenshot] : undefined;
         entries.push({
           url: `${SITE_URL}/p/${p.slug ?? p.id}`,
           lastModified: new Date(p.createdAt),
           changeFrequency: "monthly",
           priority: 0.6,
+          ...(img ? { images: img } : {}),
         });
       }
     } catch {

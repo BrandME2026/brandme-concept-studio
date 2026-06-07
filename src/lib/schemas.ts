@@ -100,6 +100,16 @@ export const designProposalSchema = z.object({
         .describe("5-8 keywords locales, ej. 'franquicia Burger King Dallas', 'abrir BK Texas'"),
     })
     .describe("Metadatos SEO para el <head> de la página pública"),
+  faq: z
+    .array(
+      z.object({
+        q: z.string().describe("Pregunta frecuente sobre invertir/abrir la franquicia"),
+        a: z.string().describe("Respuesta concreta y útil (2-4 frases)"),
+      }),
+    )
+    .describe(
+      "4-6 preguntas frecuentes REALES sobre la franquicia (inversión, requisitos, soporte, ROI, ubicación). Se renderizan en la página Y generan FAQPage schema para Google.",
+    ),
 });
 
 export type DesignProposal = z.infer<typeof designProposalSchema>;

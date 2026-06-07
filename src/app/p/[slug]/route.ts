@@ -55,6 +55,12 @@ export async function GET(
     const bySlug =
       (await getPublicGenerationBySlug(slug)) ?? (await getPublicConversationBySlug(slug));
     if (bySlug) {
+      const g = bySlug as Partial<{
+        whatsapp: string | null;
+        keywords: string[] | null;
+        faq: { q: string; a: string }[] | null;
+        css: string | null;
+      }>;
       const meta: PublicDocMeta = {
         slug: bySlug.slug,
         name: bySlug.name,
@@ -63,6 +69,10 @@ export async function GET(
         metaTitle: bySlug.metaTitle,
         metaDescription: bySlug.metaDescription,
         screenshot: bySlug.screenshot,
+        whatsapp: g.whatsapp ?? null,
+        keywords: g.keywords ?? null,
+        faq: g.faq ?? null,
+        css: g.css ?? null,
       };
       return htmlResponse(buildPublicDoc(bySlug.html, meta));
     }

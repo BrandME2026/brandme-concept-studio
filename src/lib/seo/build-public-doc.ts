@@ -39,6 +39,11 @@ export interface PublicDocMeta {
   metaDescription: string | null;
   screenshot: string | null;
   lang?: "es" | "en";
+  keywords?: string[] | null;
+  whatsapp?: string | null;
+  faq?: { q: string; a: string }[] | null;
+  /** CSS de Tailwind pre-compilado para esta página (evita el CDN-JIT lento). */
+  css?: string | null;
 }
 
 /** iframe de primera parte con el formulario de captura. Va aquí (al servir) porque
@@ -90,7 +95,13 @@ export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
     meta.metaDescription ||
     (meta.brand ? `${meta.brand}${meta.city ? ` en ${meta.city}` : ""} — Francast.ai` : "Francast.ai");
   const canonical = meta.slug ? `${SITE_URL}/p/${meta.slug}` : SITE_URL;
-  const ogImage = meta.screenshot && meta.screenshot.startsWith("http") ? meta.screenshot : "";
+  // og:image: el screenshot http si existe; si no, la OG dinámica del sitio (nunca data-URI:
+  // Google/redes no las leen). Siempre hay imagen → mejor CTR en SERP y redes.
+  const ogImage =
+    meta.screenshot && meta.screenshot.startsWith("http")
+      ? meta.screenshot
+      : `${SITE_URL}/opengraph-image`;
+  const keywords = (meta.keywords ?? []).filter(Boolean).join(", ");
 
   // Sustituir el marcador del formulario por el iframe de captura (con el slug real).
   const bodyHtml = html.replace(
@@ -101,16 +112,41 @@ export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
   // Agente de captación flotante (burbuja abajo-izquierda; WhatsApp suele ir abajo-derecha).
   const agentWidget = meta.slug ? floatingAgent(meta.slug, meta.brand, meta.city, lang) : "";
 
-  // JSON-LD LocalBusiness con marca + ciudad (ayuda a Google a entender la página).
-  const jsonLd = escapeJsonForScript(
-    JSON.stringify({
-      "@context": "https://schema.org",
+  // Teléfono real desde el WhatsApp (solo dígitos con país) — sin inventar.
+  const tel = meta.whatsapp ? "+" + meta.whatsapp.replace(/\D/g, "") : "";
+  // JSON-LD: LocalBusiness + Breadcrumb + (FAQPage si hay FAQ). Solo datos REALES.
+  const graph: Record<string, unknown>[] = [
+    {
       "@type": "LocalBusiness",
       name: meta.brand || title,
       description,
       url: canonical,
+      image: ogImage,
       ...(meta.city ? { areaServed: meta.city } : {}),
-    }),
+      ...(tel.length >= 9 ? { telephone: tel } : {}),
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
+        { "@type": "ListItem", position: 2, name: "Webs", item: `${SITE_URL}/webs` },
+        { "@type": "ListItem", position: 3, name: meta.brand || title, item: canonical },
+      ],
+    },
+  ];
+  const faq = (meta.faq ?? []).filter((f) => f?.q && f?.a);
+  if (faq.length) {
+    graph.push({
+      "@type": "FAQPage",
+      mainEntity: faq.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    });
+  }
+  const jsonLd = escapeJsonForScript(
+    JSON.stringify({ "@context": "https://schema.org", "@graph": graph }),
   );
 
   return `<!doctype html>
@@ -120,21 +156,32 @@ export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
+${keywords ? `<meta name="keywords" content="${esc(keywords)}">` : ""}
+<meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="${esc(canonical)}">
 <meta property="og:type" content="website">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${esc(canonical)}">
-${ogImage ? `<meta property="og:image" content="${esc(ogImage)}">` : ""}
+<meta property="og:image" content="${esc(ogImage)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(description)}">
+<meta name="twitter:image" content="${esc(ogImage)}">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 <script type="application/ld+json">${jsonLd}</script>
-<script src="https://cdn.tailwindcss.com"></script>
+${
+  meta.css
+    ? `<style>${meta.css}</style>`
+    : `<script src="https://cdn.tailwindcss.com"></script>`
+}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
 <style>*{box-sizing:border-box} body{margin:0} [data-aos]{pointer-events:auto}</style>
 </head>
 <body>

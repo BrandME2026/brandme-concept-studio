@@ -16,6 +16,7 @@ import { saveGeneration, findGenerationByBrandCity } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
 import { slugify } from "@/lib/seo/slug";
 import { buildWhatsAppLink, buildMailtoLink } from "@/lib/seo/contact-links";
+import { compileTailwindForHtml } from "@/lib/seo/compile-css";
 import { rateLimit, clientKey, llmBudget, tooMany, budgetExceeded, LIMITS } from "@/lib/security/rate-limit";
 import type { DesignTokens } from "@/types/design";
 
@@ -189,6 +190,10 @@ export async function POST(req: Request) {
         html = html.replace(/\{\{WHATSAPP_URL\}\}/g, waLink);
         html = html.replace(/\{\{EMAIL\}\}/g, mailLink);
 
+        // SEO/velocidad: compilar el CSS de Tailwind de ESTE HTML para servirlo inline
+        // (evita el CDN-JIT en el navegador → mejor LCP). Si falla, css=null → fallback CDN.
+        const css = await compileTailwindForHtml(html);
+
         // Guardar en el historial (secundario: no romper la generación si falla).
         // saveGeneration reserva el slug único; lo propagamos en el `done` para que el
         // cliente persista el MISMO slug en la conversación.
@@ -210,6 +215,9 @@ export async function POST(req: Request) {
               metaDescription: object.seo?.metaDescription ?? null,
               whatsapp: seo?.whatsapp ?? null,
               email: seo?.email ?? null,
+              keywords: object.seo?.keywords ?? null,
+              faq: object.faq ?? null,
+              css,
             });
             slug = saved.slug;
           } catch (e) {

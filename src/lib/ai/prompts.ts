@@ -197,8 +197,12 @@ Debes producir:
 2. Una landing de VENTA en HTML con Tailwind + ANIMACIONES (sin <html>/<head>/<body>; solo el
    contenido del body), orientada a convertir, con: nav (con ancla a #contacto), hero con propuesta
    de valor de la franquicia + CTA, sección de "por qué invertir"/beneficios, prueba social o stats
-   (cifras de la oportunidad), una sección de captación de contacto, y footer.
+   (cifras de la oportunidad), una sección de PREGUNTAS FRECUENTES (id="faq", 4-6 Q&A reales sobre
+   invertir en la franquicia, en <details>/<summary> o acordeón), una sección de captación de
+   contacto, y footer. Añade un enlace al #faq en el nav.
 3. Un resumen (campo "interactions") de las animaciones e interacciones que incluiste.
+4. El campo "faq": las MISMAS 4-6 preguntas/respuestas de la sección FAQ (el sistema genera el
+   FAQPage schema con ellas). Deben coincidir con lo que pones en el HTML.
 
 El iframe del preview YA carga por CDN: Tailwind, GSAP, ScrollTrigger y AOS. ÚSALOS.
 
@@ -215,6 +219,9 @@ REGLAS DEL HTML (web viva):
   que abre/cierra), y al menos uno de: tabs, acordeón o carrusel. Deben responder de verdad al clic.
 - Micro-interacciones: hover (hover:scale-105, transiciones), estados de foco visibles.
 - Responsive (mobile-first), accesible (aria donde aplique), jerarquía clara.
+- RENDIMIENTO/SEO de imágenes (importante para Core Web Vitals): TODA <img> con atributos
+  width y height (evita saltos de layout/CLS), alt SIEMPRE descriptivo (nunca vacío), y
+  loading="lazy" decoding="async" EXCEPTO la imagen principal del hero (esa sin lazy, para LCP).
 - IMPORTANTE: TODOS los textos y la descripción/principios deben estar en ${lang}. No mezcles idiomas.
 - NO copies el diseño pixel a pixel de la referencia; es una interpretación con identidad propia.
   Pero el COPY sí debe ser específico y real de la marca y el mercado (ver datos abajo), no genérico.${imagesRule}${logoRule}

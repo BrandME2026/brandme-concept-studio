@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { listAllGenerations, type GenerationListItem } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
 import { inferCategory, CATEGORY_ORDER } from "@/lib/brand-category";
+import { jsonLdScript } from "@/lib/seo/json-ld";
 import { es } from "@/lib/i18n/es";
 import { en } from "@/lib/i18n/en";
 import { LOCALE_COOKIE, resolveInitialLocale } from "@/lib/i18n/locale";
@@ -58,8 +59,26 @@ export default async function WebsPage() {
     items: items.filter((it) => inferCategory(it.url).id === cat.id),
   })).filter((g) => g.items.length > 0);
 
+  // ItemList: ayuda a Google a entender la galería y descubrir cada página.
+  const itemListLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: items.map((it, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${SITE_URL}/p/${it.slug ?? it.id}`,
+      name: it.name,
+    })),
+  };
+
   return (
     <main className="flex min-h-[100dvh] flex-col overflow-y-auto bg-canvas">
+      {items.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(itemListLd) }}
+        />
+      )}
       <header className="border-b border-hairline bg-canvas px-6 pb-8 pt-12 md:px-8">
         <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4">
           <span className="eyebrow text-accent-orange">{t("webs.eyebrow")}</span>

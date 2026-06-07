@@ -50,6 +50,9 @@ async function ensureSchema(): Promise<void> {
     ALTER TABLE generations ADD COLUMN IF NOT EXISTS meta_description TEXT;
     ALTER TABLE generations ADD COLUMN IF NOT EXISTS whatsapp TEXT;
     ALTER TABLE generations ADD COLUMN IF NOT EXISTS email TEXT;
+    ALTER TABLE generations ADD COLUMN IF NOT EXISTS keywords TEXT;
+    ALTER TABLE generations ADD COLUMN IF NOT EXISTS faq TEXT;
+    ALTER TABLE generations ADD COLUMN IF NOT EXISTS css TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_generations_slug
       ON generations (slug) WHERE slug IS NOT NULL;
   `);
@@ -85,13 +88,16 @@ export async function saveGeneration(input: {
   metaDescription?: string | null;
   whatsapp?: string | null;
   email?: string | null;
+  keywords?: string[] | null;
+  faq?: { q: string; a: string }[] | null;
+  css?: string | null;
 }): Promise<{ id: string; slug: string | null }> {
   await ensureSchema();
   const slug = input.slug ? await uniqueSlug(input.slug) : null;
   const { rows } = await getPool().query<{ id: string }>(
     `INSERT INTO generations (session_id, url, name, design_md, html, screenshot, interactions,
-       slug, brand, city, meta_title, meta_description, whatsapp, email)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
+       slug, brand, city, meta_title, meta_description, whatsapp, email, keywords, faq, css)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id`,
     [
       input.sessionId,
       input.url,
@@ -107,6 +113,9 @@ export async function saveGeneration(input: {
       input.metaDescription ?? null,
       input.whatsapp ?? null,
       input.email ?? null,
+      input.keywords?.length ? JSON.stringify(input.keywords) : null,
+      input.faq?.length ? JSON.stringify(input.faq) : null,
+      input.css ?? null,
     ],
   );
   return { id: rows[0].id, slug };
@@ -150,15 +159,52 @@ export async function getPublicGenerationBySlug(slug: string): Promise<{
   city: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
+  whatsapp: string | null;
+  keywords: string[] | null;
+  faq: { q: string; a: string }[] | null;
+  css: string | null;
 } | null> {
   await ensureSchema();
-  const { rows } = await getPool().query(
+  const { rows } = await getPool().query<{
+    id: string;
+    slug: string | null;
+    url: string;
+    name: string;
+    html: string;
+    screenshot: string | null;
+    brand: string | null;
+    city: string | null;
+    metaTitle: string | null;
+    metaDescription: string | null;
+    whatsapp: string | null;
+    keywords: string | null;
+    faq: string | null;
+    css: string | null;
+  }>(
     `SELECT id, slug, url, name, html, screenshot,
-            brand, city, meta_title AS "metaTitle", meta_description AS "metaDescription"
+            brand, city, meta_title AS "metaTitle", meta_description AS "metaDescription",
+            whatsapp, keywords, faq, css
      FROM generations WHERE slug = $1 LIMIT 1`,
     [slug],
   );
-  return rows[0] ?? null;
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    ...r,
+    keywords: safeJsonArray<string>(r.keywords),
+    faq: safeJsonArray<{ q: string; a: string }>(r.faq),
+  };
+}
+
+/** Parsea un campo JSON-array guardado como texto; null/inválido → null. */
+function safeJsonArray<T>(s: string | null): T[] | null {
+  if (!s) return null;
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? (v as T[]) : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
