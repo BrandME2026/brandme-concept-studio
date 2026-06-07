@@ -275,8 +275,17 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
 
   const busy = chat.status === "streaming" || chat.status === "submitted";
 
+  // Autoscroll pegado al fondo. En streaming, chat.messages cambia de referencia
+  // en cada chunk: con behavior "smooth" cada scroll reinicia la animación anterior
+  // y nunca alcanza el fondo. Usamos "instant" dentro de rAF para leer scrollHeight
+  // ya pintado y saltar al fondo en cada token sin pelear con la animación.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    const el = scrollRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "instant" as ScrollBehavior });
+    });
+    return () => cancelAnimationFrame(id);
   }, [chat.messages, gen.generating]);
 
   const send = useCallback(
