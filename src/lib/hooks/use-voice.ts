@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 
 type RecState = "idle" | "recording" | "transcribing";
 
@@ -10,6 +10,16 @@ function pickMime(): string {
   const candidates = ["audio/webm", "audio/mp4", "audio/ogg"];
   return candidates.find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
 }
+
+// Soporte de voz como "external store": en SSR siempre false; en el cliente se calcula la
+// capacidad real. Evita el hydration mismatch sin setState-en-effect (regla del compiler).
+const emptySubscribe = () => () => {};
+const getSupportedClient = () =>
+  typeof navigator !== "undefined" &&
+  !!navigator.mediaDevices?.getUserMedia &&
+  typeof MediaRecorder !== "undefined" &&
+  pickMime() !== "";
+const getSupportedServer = () => false;
 
 /**
  * Voz para el chat: grabación de micrófono → transcripción (Whisper vía /api/speech-to-text)
@@ -28,11 +38,12 @@ export function useVoice(opts?: { language?: string }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const resolveRef = useRef<((text: string) => void) | null>(null);
 
-  const supported =
-    typeof navigator !== "undefined" &&
-    !!navigator.mediaDevices?.getUserMedia &&
-    typeof MediaRecorder !== "undefined" &&
-    pickMime() !== "";
+  // false en SSR/primer render (sin mismatch); capacidad real tras hidratar.
+  const supported = useSyncExternalStore(
+    emptySubscribe,
+    getSupportedClient,
+    getSupportedServer,
+  );
 
   const cleanupStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
