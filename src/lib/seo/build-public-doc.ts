@@ -44,14 +44,23 @@ export interface PublicDocMeta {
   faq?: { q: string; a: string }[] | null;
   /** CSS de Tailwind pre-compilado para esta página (evita el CDN-JIT lento). */
   css?: string | null;
+  /** Campos elegidos para el formulario de captura; vacío → set por defecto. */
+  formFields?: string[] | null;
 }
 
 /** iframe de primera parte con el formulario de captura. Va aquí (al servir) porque
  *  necesita el slug, que solo se conoce en este punto. El iframe SÍ puede hacer fetch
  *  a /api/leads (es nuestra app), a diferencia del HTML del LLM bajo sandbox. */
-function leadFormIframe(slug: string | null, brand: string | null, lang: "es" | "en"): string {
+function leadFormIframe(
+  slug: string | null,
+  brand: string | null,
+  lang: "es" | "en",
+  formFields?: string[] | null,
+): string {
   if (!slug) return "";
-  const qs = new URLSearchParams({ slug, brand: brand ?? "", lang }).toString();
+  const params: Record<string, string> = { slug, brand: brand ?? "", lang };
+  if (formFields?.length) params.fields = formFields.join(",");
+  const qs = new URLSearchParams(params).toString();
   // sandbox propio del iframe: allow-same-origin + allow-scripts para que el widget de
   // primera parte pueda hacer fetch a /api/leads (el documento padre va sin same-origin).
   return `<iframe src="/embed/lead-form?${qs}" title="Contacto" loading="lazy" sandbox="allow-same-origin allow-scripts allow-forms" style="width:100%;max-width:440px;border:0;height:430px;margin:0 auto;display:block"></iframe>`;
@@ -106,7 +115,7 @@ export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
   // Sustituir el marcador del formulario por el iframe de captura (con el slug real).
   const bodyHtml = html.replace(
     /\{\{LEAD_FORM\}\}/g,
-    leadFormIframe(meta.slug, meta.brand, lang),
+    leadFormIframe(meta.slug, meta.brand, lang, meta.formFields),
   );
 
   // Agente de captación flotante (burbuja abajo-izquierda; WhatsApp suele ir abajo-derecha).

@@ -14,8 +14,9 @@ import { injectImages } from "@/lib/preview/inject-images";
 import { getSessionId } from "@/lib/session";
 import { saveGeneration, findGenerationByBrandCity } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
+import { isStripeConfigured } from "@/lib/stripe/client";
 import { slugify } from "@/lib/seo/slug";
-import { buildWhatsAppLink, buildMailtoLink } from "@/lib/seo/contact-links";
+import { buildWhatsAppLink, buildMailtoLink, buildPhoneLink } from "@/lib/seo/contact-links";
 import { compileTailwindForHtml } from "@/lib/seo/compile-css";
 import { rateLimit, clientKey, llmBudget, tooMany, budgetExceeded, LIMITS } from "@/lib/security/rate-limit";
 import type { DesignTokens } from "@/types/design";
@@ -44,6 +45,12 @@ const generateBodySchema = z.object({
       positioning: z.string().max(400).optional(),
       whatsapp: z.string().max(40).optional(),
       email: z.string().max(160).optional(),
+      phone: z.string().max(40).optional(),
+      sellingPoints: z.string().max(800).optional(),
+      formFields: z
+        .array(z.enum(["nombre", "email", "telefono", "ciudad", "inversion", "mensaje"]))
+        .max(6)
+        .optional(),
     })
     .optional(),
 });
@@ -187,8 +194,10 @@ export async function POST(req: Request) {
         // no dio el dato, el marcador se limpia (el botón no aparece) — nada inventado.
         const waLink = buildWhatsAppLink(seo?.whatsapp, brand, city);
         const mailLink = buildMailtoLink(seo?.email, brand, city);
+        const phoneLink = buildPhoneLink(seo?.phone);
         html = html.replace(/\{\{WHATSAPP_URL\}\}/g, waLink);
         html = html.replace(/\{\{EMAIL\}\}/g, mailLink);
+        html = html.replace(/\{\{PHONE_URL\}\}/g, phoneLink);
 
         // SEO/velocidad: compilar el CSS de Tailwind de ESTE HTML para servirlo inline
         // (evita el CDN-JIT en el navegador → mejor LCP). Si falla, css=null → fallback CDN.
@@ -215,9 +224,14 @@ export async function POST(req: Request) {
               metaDescription: object.seo?.metaDescription ?? null,
               whatsapp: seo?.whatsapp ?? null,
               email: seo?.email ?? null,
+              phone: seo?.phone ?? null,
               keywords: object.seo?.keywords ?? null,
               faq: object.faq ?? null,
               css,
+              formFields: seo?.formFields ?? null,
+              // Sin Stripe configurado → publicar gratis (legacy): nace publicada.
+              // Con Stripe → nace en borrador hasta que el usuario pague y publique.
+              published: !isStripeConfigured(),
             });
             slug = saved.slug;
           } catch (e) {

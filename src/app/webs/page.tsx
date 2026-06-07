@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { listAllGenerations, type GenerationListItem } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
+import { isStripeConfigured } from "@/lib/stripe/client";
 import { inferCategory, CATEGORY_ORDER } from "@/lib/brand-category";
 import { jsonLdScript } from "@/lib/seo/json-ld";
 import { es } from "@/lib/i18n/es";
@@ -48,7 +49,7 @@ export default async function WebsPage() {
   let items: GenerationListItem[] = [];
   if (isDbConfigured()) {
     try {
-      items = await listAllGenerations();
+      items = await listAllGenerations(60, isStripeConfigured());
     } catch {
       items = [];
     }

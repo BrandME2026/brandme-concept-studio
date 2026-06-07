@@ -1,0 +1,78 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getSessionId } from "@/lib/session";
+import { isDbConfigured } from "@/lib/db/client";
+import { getStripe, isStripeConfigured, siteUrl } from "@/lib/stripe/client";
+import { getSubscriptionBySession, upsertCustomer } from "@/lib/db/subscriptions";
+import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const bodySchema = z.object({
+  // slug de la web que el usuario quiere publicar al volver del pago (opcional).
+  slug: z.string().max(80).optional(),
+});
+
+const fail = (code: string, message: string, status: number) =>
+  NextResponse.json({ success: false, error: { code, message } }, { status });
+
+/**
+ * Crea (o reusa) el Customer de Stripe ligado a la sesión y abre una Checkout Session
+ * de suscripción mensual. Devuelve la URL de Stripe para redirigir.
+ */
+export async function POST(request: Request) {
+  const rl = rateLimit(`checkout:${clientKey(request)}`, LIMITS.checkout);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+
+  if (!isDbConfigured()) return fail("NO_DB", "No disponible", 503);
+  if (!isStripeConfigured()) return fail("NO_STRIPE", "Pagos no configurados", 503);
+
+  const base = siteUrl();
+  if (process.env.NODE_ENV === "production" && base.includes("localhost")) {
+    console.error("[checkout] NEXT_PUBLIC_SITE_URL apunta a localhost en producción");
+    return fail("BAD_CONFIG", "Configuración de sitio inválida", 500);
+  }
+
+  let body: unknown = {};
+  try {
+    body = await request.json();
+  } catch {
+    /* body opcional */
+  }
+  const parsed = bodySchema.safeParse(body ?? {});
+  const slug = parsed.success ? parsed.data.slug : undefined;
+
+  try {
+    const sessionId = await getSessionId();
+    const stripe = getStripe();
+
+    // Reusar Customer si la sesión ya tiene uno; si no, crearlo y guardarlo.
+    let customerId = (await getSubscriptionBySession(sessionId))?.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({ metadata: { session_id: sessionId } });
+      customerId = customer.id;
+      await upsertCustomer({ sessionId, customerId });
+    }
+
+    const successUrl = `${base}/?checkout=success${slug ? `&slug=${encodeURIComponent(slug)}` : ""}`;
+    const cancelUrl = `${base}/?checkout=cancel`;
+
+    const checkout = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      client_reference_id: sessionId,
+      line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
+      subscription_data: { metadata: { session_id: sessionId } },
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      allow_promotion_codes: true,
+    });
+
+    if (!checkout.url) return fail("NO_URL", "No se pudo iniciar el pago", 502);
+    return NextResponse.json({ success: true, data: { url: checkout.url } });
+  } catch (err) {
+    console.error("[checkout] fallo creando sesión", err);
+    return fail("CHECKOUT_FAILED", "No se pudo iniciar el pago", 500);
+  }
+}

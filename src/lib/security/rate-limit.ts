@@ -134,4 +134,5 @@ export const LIMITS = {
   agent: { windowMs: 60_000, max: num(process.env.RL_AGENT_PER_MIN, 20) },
   resolve: { windowMs: 60_000, max: num(process.env.RL_RESOLVE_PER_MIN, 15) },
   leads: { windowMs: 60_000, max: num(process.env.RL_LEADS_PER_MIN, 5) },
+  checkout: { windowMs: 60_000, max: num(process.env.RL_CHECKOUT_PER_MIN, 5) },
 };

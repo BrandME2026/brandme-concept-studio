@@ -9,6 +9,7 @@ export function ProposalActions({
   designMd,
   name,
   shareId,
+  slug,
   onRegenerate,
   busy,
 }: {
@@ -17,12 +18,56 @@ export function ProposalActions({
   name: string;
   /** id de la conversación/página para el link público /p/[id] (Compartir). */
   shareId?: string | null;
+  /** slug de la web para publicar (botón Publicar). */
+  slug?: string | null;
   onRegenerate?: () => void;
   busy?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [publishState, setPublishState] = useState<"idle" | "working" | "done">("idle");
+  const [publishError, setPublishError] = useState("");
   const t = useT();
+
+  /** Publica la web: si hay suscripción activa marca published; si no, manda a Stripe. */
+  async function publish() {
+    if (!slug || publishState === "working") return;
+    setPublishState("working");
+    setPublishError("");
+    try {
+      const sub = await fetch("/api/subscription").then((r) => r.json()).catch(() => null);
+      const active = Boolean(sub?.data?.active);
+      const configured = Boolean(sub?.data?.configured);
+
+      // Con paywall activo y sin suscripción → Checkout de Stripe.
+      if (configured && !active) {
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug }),
+        });
+        const json = await res.json().catch(() => null);
+        if (json?.data?.url) {
+          window.location.href = json.data.url as string;
+          return;
+        }
+        throw new Error(json?.error?.message ?? t("proposal.publishError"));
+      }
+
+      // Suscripción activa (o sin Stripe → gratis): publicar directo.
+      const res = await fetch("/api/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error?.message ?? t("proposal.publishError"));
+      setPublishState("done");
+    } catch (err) {
+      setPublishState("idle");
+      setPublishError(err instanceof Error ? err.message : t("proposal.publishError"));
+    }
+  }
 
   async function copyHtml() {
     try {
@@ -75,6 +120,20 @@ export function ProposalActions({
       {onRegenerate && (
         <button className={btn} onClick={onRegenerate} disabled={busy}>
           {t("proposal.regenerate")}
+        </button>
+      )}
+      {slug && (
+        <button
+          className="rounded-sm border border-primary bg-primary px-3 py-1.5 font-mono text-xs uppercase text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
+          onClick={publish}
+          disabled={publishState === "working" || publishState === "done"}
+          title={publishError || undefined}
+        >
+          {publishState === "done"
+            ? t("proposal.published")
+            : publishState === "working"
+              ? t("proposal.publishing")
+              : t("proposal.publish")}
         </button>
       )}
     </div>

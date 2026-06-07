@@ -1,6 +1,7 @@
 import { getPublicGenerationBySlug, getPublicGeneration } from "@/lib/db/history";
 import { getPublicConversationBySlug, getPublicConversationPage } from "@/lib/db/conversations";
 import { isDbConfigured } from "@/lib/db/client";
+import { isStripeConfigured } from "@/lib/stripe/client";
 import { buildPublicDoc, type PublicDocMeta } from "@/lib/seo/build-public-doc";
 
 export const runtime = "nodejs";
@@ -49,17 +50,24 @@ export async function GET(
 ) {
   const { slug } = await params;
   if (!isDbConfigured()) return notFound();
+  // Gate de pago: solo se aplica si Stripe está configurado (si no, todo lo published se sirve).
+  const enforce = isStripeConfigured();
 
   try {
     // 1) Buscar por slug (en generations y conversations).
+    // Con paywall activo NO usamos el fallback de `conversations`: esa tabla no tiene gate
+    // (`published`) y serviría la copia de la web saltándose el pago. Las webs viven en
+    // `generations`, donde sí se aplica el gate.
     const bySlug =
-      (await getPublicGenerationBySlug(slug)) ?? (await getPublicConversationBySlug(slug));
+      (await getPublicGenerationBySlug(slug, enforce)) ??
+      (enforce ? null : await getPublicConversationBySlug(slug));
     if (bySlug) {
       const g = bySlug as Partial<{
         whatsapp: string | null;
         keywords: string[] | null;
         faq: { q: string; a: string }[] | null;
         css: string | null;
+        formFields: string[] | null;
       }>;
       const meta: PublicDocMeta = {
         slug: bySlug.slug,
@@ -73,20 +81,21 @@ export async function GET(
         keywords: g.keywords ?? null,
         faq: g.faq ?? null,
         css: g.css ?? null,
+        formFields: g.formFields ?? null,
       };
       return htmlResponse(buildPublicDoc(bySlug.html, meta));
     }
 
     // 2) Fallback: entró por UUID viejo. Redirigir al slug si existe, o servir directo.
     if (isUuid(slug)) {
-      const gen = await getPublicGeneration(slug);
+      const gen = await getPublicGeneration(slug, enforce);
       if (gen?.slug) {
         return Response.redirect(
           `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/p/${gen.slug}`,
           301,
         );
       }
-      const rec = gen ?? (await getPublicConversationPage(slug));
+      const rec = gen ?? (enforce ? null : await getPublicConversationPage(slug));
       if (rec) {
         return htmlResponse(
           buildPublicDoc(rec.html, {
