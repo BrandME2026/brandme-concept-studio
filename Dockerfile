@@ -56,6 +56,12 @@ RUN mkdir -p node_modules \
   && ln -sf .pnpm/playwright@1.60.0/node_modules/playwright node_modules/playwright \
   && ln -sf .pnpm/playwright-core@1.60.0/node_modules/playwright-core node_modules/playwright-core
 
+# tailwindcss se usa en RUNTIME para compilar el CSS de cada página (SEO/velocidad), pero
+# es devDependency y el standalone no lo incluye. Copiamos su store .pnpm + symlink top-level.
+COPY --from=builder /app/node_modules/.pnpm/tailwindcss@4.3.0 \
+  ./node_modules/.pnpm/tailwindcss@4.3.0
+RUN ln -sf .pnpm/tailwindcss@4.3.0/node_modules/tailwindcss node_modules/tailwindcss
+
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
