@@ -127,7 +127,19 @@ export const en: Record<TranslationKey, string> = {
   "proposal.regenerate": "Regenerate",
   "proposal.share": "Share",
   "proposal.shared": "Link copied!",
+  "proposal.publish": "Publish",
+  "proposal.publishing": "Publishing…",
+  "proposal.published": "✓ Published",
+  "proposal.publishError": "Couldn't publish. Try again.",
   "hc.regenerateBrief": "Regenerate the page with a fresh design variation.",
+
+  // Studio — responsive preview / fullscreen
+  "preview.device.mobile": "Mobile",
+  "preview.device.tablet": "Tablet",
+  "preview.device.desktop": "Desktop",
+  "preview.device.custom": "Custom",
+  "preview.fullscreen": "Fullscreen",
+  "preview.exit": "Exit ✕",
 
   // Studio — extraction error / generic
   "studio.extractError": "Extraction error",

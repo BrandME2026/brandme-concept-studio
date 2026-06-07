@@ -125,7 +125,19 @@ export const es = {
   "proposal.regenerate": "Regenerar",
   "proposal.share": "Compartir",
   "proposal.shared": "¡Link copiado!",
+  "proposal.publish": "Publicar",
+  "proposal.publishing": "Publicando…",
+  "proposal.published": "✓ Publicada",
+  "proposal.publishError": "No se pudo publicar. Intenta de nuevo.",
   "hc.regenerateBrief": "Regenera la página con una variación fresca del diseño.",
+
+  // Studio — preview responsive / pantalla completa
+  "preview.device.mobile": "Móvil",
+  "preview.device.tablet": "Tablet",
+  "preview.device.desktop": "Escritorio",
+  "preview.device.custom": "Personalizado",
+  "preview.fullscreen": "Pantalla completa",
+  "preview.exit": "Salir ✕",
 
   // Studio — error de extracción / genéricos
   "studio.extractError": "Error de extracción",

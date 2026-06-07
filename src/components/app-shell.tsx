@@ -12,7 +12,8 @@ import type { DesignTokens } from "@/types/design";
 import { useLocale, useT } from "@/lib/i18n/context";
 import { useGeneration } from "@/lib/hooks/use-generation";
 import { ConversationSidebar } from "./conversation-sidebar";
-import { PreviewFrame } from "./preview-frame";
+import { ResponsivePreview } from "./responsive-preview";
+import { PreviewFullscreen } from "./preview-fullscreen";
 import { GenerationProgress } from "./generation-progress";
 import { ProposalActions } from "./proposal-actions";
 import { Markdown } from "./markdown";
@@ -53,6 +54,8 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   const [extraction, setExtraction] = useState<Extraction | null>(null);
   const [launching, setLaunching] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
+  // HTML mostrado en el overlay de pantalla completa (null = cerrado).
+  const [fullscreenHtml, setFullscreenHtml] = useState<string | null>(null);
   // Página ya generada al rehidratar (artifact persistido).
   const [savedPage, setSavedPage] = useState<{ html: string; name: string | null } | null>(
     initial?.generatedHtml
@@ -70,6 +73,43 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   useEffect(() => {
     extractionRef.current = extraction;
   }, [extraction]);
+
+  // Retorno de Stripe Checkout: ?checkout=success&slug=… → esperar al webhook (polling
+  // corto) y publicar la web. Limpia la query al terminar para no repetir al refrescar.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("checkout") !== "success") return;
+    const slug = url.searchParams.get("slug");
+    const clean = () => {
+      url.searchParams.delete("checkout");
+      url.searchParams.delete("slug");
+      window.history.replaceState(null, "", url.pathname + url.search);
+    };
+    if (!slug) {
+      clean();
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      // El webhook puede tardar; reintentamos hasta 5 veces (~10s) antes de rendirnos.
+      for (let i = 0; i < 5 && !cancelled; i++) {
+        const sub = await fetch("/api/subscription").then((r) => r.json()).catch(() => null);
+        if (sub?.data?.active) {
+          await fetch("/api/publish", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ slug }),
+          }).catch(() => null);
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      if (!cancelled) clean();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ¿Hay página? (recién generada o rehidratada). Define el modo del chat.
   const hasPage = !!gen.proposal || !!savedPage;
@@ -120,6 +160,9 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
       positioning?: string;
       whatsapp?: string;
       email?: string;
+      phone?: string;
+      sellingPoints?: string;
+      formFields?: string[];
     }) => {
       setLaunching(true);
       setSavedPage(null);
@@ -152,6 +195,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
           `Brand: ${ctx.brand}`,
           ctx.markets ? `Markets: ${ctx.markets}` : "",
           ctx.positioning ? `Positioning: ${ctx.positioning}` : "",
+          ctx.sellingPoints ? `Selling points: ${ctx.sellingPoints}` : "",
         ]
           .filter(Boolean)
           .join("\n");
@@ -167,6 +211,9 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
             positioning: ctx.positioning,
             whatsapp: ctx.whatsapp,
             email: ctx.email,
+            phone: ctx.phone,
+            sellingPoints: ctx.sellingPoints,
+            formFields: ctx.formFields,
           },
         });
         // Anti-duplicado: el servidor reusó una página existente (marca+ciudad ya
@@ -427,12 +474,16 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               designMd={proposal.designMd}
               name={proposal.proposal.name}
               shareId={convId}
+              slug={proposal.slug}
               onRegenerate={() => void runRefine(t("hc.regenerateBrief"))}
               busy={gen.generating || launching}
             />
           </div>
           <div className="flex-1 animate-scale overflow-hidden">
-            <PreviewFrame html={proposal.html} />
+            <ResponsivePreview
+              html={proposal.html}
+              onFullscreen={() => setFullscreenHtml(proposal.html)}
+            />
           </div>
         </>
       ) : savedPage ? (
@@ -441,7 +492,10 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
             <span className="eyebrow text-body">{savedPage.name ?? ""}</span>
           </div>
           <div className="flex-1 animate-scale overflow-hidden">
-            <PreviewFrame html={savedPage.html} />
+            <ResponsivePreview
+              html={savedPage.html}
+              onFullscreen={() => setFullscreenHtml(savedPage.html)}
+            />
           </div>
         </>
       ) : gen.generating || launching ? (
@@ -513,6 +567,10 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
           <div className="flex-1 overflow-hidden">{chatPanel}</div>
         )}
       </div>
+
+      {fullscreenHtml !== null && (
+        <PreviewFullscreen html={fullscreenHtml} onClose={() => setFullscreenHtml(null)} />
+      )}
     </div>
   );
 }
