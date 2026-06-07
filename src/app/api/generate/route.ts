@@ -35,6 +35,8 @@ const generateBodySchema = z.object({
   language: z.enum(["es", "en"]).default("es"),
   // Imágenes del usuario (data URLs) para incrustar en el diseño generado.
   images: z.array(z.string().max(MAX_IMG)).max(6).default([]),
+  // Logo subido por el usuario (data URL); si viene, MANDA sobre el logo extraído.
+  logo: z.string().max(MAX_IMG).optional(),
   // Calidad/modelo (allowlist); "alta" = GPT-5.5.
   quality: z.enum(QUALITY_VALUES).default("alta"),
   // Contexto de marca para personalización + SEO de la página generada.
@@ -100,7 +102,7 @@ export async function POST(req: Request) {
   }
 
   const tokens = parsed.data.tokens as unknown as DesignTokens;
-  const { screenshot, brief, language, images, quality, seo } = parsed.data;
+  const { screenshot, brief, language, images, logo: userLogo, quality, seo } = parsed.data;
 
   // Sesión para el historial (cookie); se lee aquí, fuera del stream.
   const sessionId = await getSessionId();
@@ -146,7 +148,7 @@ export async function POST(req: Request) {
         const result = streamText({
           model: getDesignModel(quality),
           experimental_output: Output.object({ schema: designProposalSchema }),
-          system: generateSystemPrompt(language, images.length, Boolean(tokens?.meta?.logo), seo),
+          system: generateSystemPrompt(language, images.length, Boolean(userLogo || tokens?.meta?.logo), seo),
           messages: buildGenerateMessages(tokens, screenshot, brief, images),
           providerOptions: REASONING_PROVIDER_OPTIONS,
         });
@@ -184,7 +186,8 @@ export async function POST(req: Request) {
         // Sustituir los marcadores {{IMG_n}} por las imágenes del usuario y {{LOGO}}
         // por el logo oficial extraído (data URI). Si no hay logo, se limpia el marcador.
         let html = injectImages(object.html, images);
-        html = html.replace(/\{\{LOGO\}\}/g, tokens?.meta?.logo ?? "");
+        // Logo subido por el usuario MANDA sobre el extraído de la web.
+        html = html.replace(/\{\{LOGO\}\}/g, userLogo ?? tokens?.meta?.logo ?? "");
 
         const brand = seo?.brand ?? object.name;
         const city = seo?.city ?? null;

@@ -22,6 +22,10 @@ interface GenerateInput {
   brief: string;
   language: Locale;
   quality?: "rapido" | "alta";
+  /** Fotos del usuario (data URLs) para incrustar como {{IMG_n}}. */
+  images?: string[];
+  /** Logo del usuario (data URL); si existe, MANDA sobre el logo extraído. */
+  logo?: string | null;
   /** Contexto de marca para personalización + SEO de la página generada. */
   seo?: {
     brand?: string;
@@ -67,7 +71,8 @@ export function useGeneration() {
           screenshot: input.screenshot,
           brief: input.brief,
           language: input.language,
-          images: [],
+          images: input.images ?? [],
+          logo: input.logo ?? undefined,
           quality: input.quality ?? "alta",
           seo: input.seo,
         }),

@@ -135,4 +135,5 @@ export const LIMITS = {
   resolve: { windowMs: 60_000, max: num(process.env.RL_RESOLVE_PER_MIN, 15) },
   leads: { windowMs: 60_000, max: num(process.env.RL_LEADS_PER_MIN, 5) },
   checkout: { windowMs: 60_000, max: num(process.env.RL_CHECKOUT_PER_MIN, 5) },
+  speech: { windowMs: 60_000, max: num(process.env.RL_SPEECH_PER_MIN, 10) },
 };

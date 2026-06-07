@@ -11,6 +11,7 @@ import { Panel, Group, Separator } from "react-resizable-panels";
 import type { DesignTokens } from "@/types/design";
 import { useLocale, useT } from "@/lib/i18n/context";
 import { useGeneration } from "@/lib/hooks/use-generation";
+import { useVoice } from "@/lib/hooks/use-voice";
 import { ConversationSidebar } from "./conversation-sidebar";
 import { ResponsivePreview } from "./responsive-preview";
 import { PreviewFullscreen } from "./preview-fullscreen";
@@ -56,6 +57,9 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
   // HTML mostrado en el overlay de pantalla completa (null = cerrado).
   const [fullscreenHtml, setFullscreenHtml] = useState<string | null>(null);
+  // Adjuntos del usuario para la generación: fotos ({{IMG_n}}) y logo propio ({{LOGO}}).
+  const [images, setImages] = useState<string[]>([]);
+  const [logo, setLogo] = useState<string | null>(null);
   // Página ya generada al rehidratar (artifact persistido).
   const [savedPage, setSavedPage] = useState<{ html: string; name: string | null } | null>(
     initial?.generatedHtml
@@ -64,6 +68,10 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   );
 
   const gen = useGeneration();
+  // ── Voz ── (declarado arriba: lo usa el useEffect de auto-speak más abajo)
+  const voice = useVoice({ language: locale });
+  const [voiceOn, setVoiceOn] = useState(false); // leer respuestas en voz alta
+  const spokenRef = useRef<string | null>(null); // último mensaje ya leído (evita repetir)
   const scrollRef = useRef<HTMLDivElement>(null);
   const convIdRef = useRef(convId);
   const extractionRef = useRef<Extraction | null>(extraction);
@@ -73,6 +81,19 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   useEffect(() => {
     extractionRef.current = extraction;
   }, [extraction]);
+  // Refs de adjuntos: los lee runLaunch sin recrear su useCallback en cada cambio.
+  const imagesRef = useRef<string[]>([]);
+  const logoRef = useRef<string | null>(null);
+  // Inputs de archivo ocultos (clip = fotos, logo aparte).
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+  useEffect(() => {
+    logoRef.current = logo;
+  }, [logo]);
 
   // Retorno de Stripe Checkout: ?checkout=success&slug=… → esperar al webhook (polling
   // corto) y publicar la web. Limpia la query al terminar para no repetir al refrescar.
@@ -205,6 +226,8 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
           screenshot: extr.screenshot,
           brief,
           language: locale,
+          images: imagesRef.current,
+          logo: logoRef.current,
           seo: {
             brand: ctx.brand,
             city: ctx.markets?.split(/[,;]/)[0]?.trim(),
@@ -335,6 +358,18 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
     return () => cancelAnimationFrame(id);
   }, [chat.messages, gen.generating]);
 
+  // Leer en voz la última respuesta del asistente cuando termina (si la voz está activa).
+  useEffect(() => {
+    if (!voiceOn || busy) return;
+    const last = [...chat.messages].reverse().find((m) => m.role === "assistant");
+    if (!last) return;
+    const text = messageText(last);
+    if (text && spokenRef.current !== last.id) {
+      spokenRef.current = last.id;
+      void voice.speak(text);
+    }
+  }, [voiceOn, busy, chat.messages, voice]);
+
   const send = useCallback(
     (text: string) => {
       const v = text.trim();
@@ -346,6 +381,44 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
     [chat, busy, launching, hasPage],
   );
 
+  /** Micrófono: graba; al soltar transcribe y ENVÍA automático. */
+  const handleMic = useCallback(async () => {
+    if (voice.recState === "recording") {
+      voice.stop();
+      return;
+    }
+    if (busy || launching) return;
+    const text = await voice.start();
+    if (text.trim()) send(text);
+  }, [voice, busy, launching, send]);
+
+  // ── Adjuntar (fotos + logo) ────────────────────────────────────────────────
+  const MAX_IMAGES = 6;
+  const MAX_BYTES = 8_000_000; // ~8MB, igual que el backend (MAX_IMG)
+  const fileToDataUrl = (f: File) =>
+    new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(f);
+    });
+
+  /** Añade archivos como fotos ({{IMG_n}}), respetando tope y tipo/tamaño. */
+  const addImages = useCallback(async (files: FileList | File[]) => {
+    const arr = Array.from(files).filter(
+      (f) => f.type.startsWith("image/") && f.size <= MAX_BYTES,
+    );
+    if (!arr.length) return;
+    const urls = await Promise.all(arr.map(fileToDataUrl));
+    setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES));
+  }, []);
+
+  /** Marca el primer archivo de imagen como logo del usuario. */
+  const setLogoFile = useCallback(async (files: FileList | File[]) => {
+    const f = Array.from(files).find((x) => x.type.startsWith("image/") && x.size <= MAX_BYTES);
+    if (f) setLogo(await fileToDataUrl(f));
+  }, []);
+
   /** Reinicia a una conversación nueva: limpia chat, artifact, estado y URL. */
   const handleNew = useCallback(() => {
     chat.setMessages([]);
@@ -356,6 +429,8 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
     setConvId(null);
     setInput("");
     setLaunching(false);
+    setImages([]);
+    setLogo(null);
     window.history.replaceState(null, "", "/");
   }, [chat, gen]);
 
@@ -431,8 +506,82 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
             send(input);
           }}
           className="mx-auto w-full max-w-2xl"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            if (e.dataTransfer.files?.length) void addImages(e.dataTransfer.files);
+          }}
         >
-          <div className="flex items-end gap-2 rounded-xl border border-white/15 bg-surface-dark-soft p-2 focus-within:border-accent-periwinkle">
+          {/* Miniaturas de adjuntos (logo + fotos) */}
+          {(logo || images.length > 0) && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {logo && (
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={logo} alt={t("hc.logo")} className="h-12 w-12 rounded-md border border-accent-periwinkle object-contain bg-white/5" />
+                  <span className="absolute left-0.5 top-0.5 rounded-sm bg-canvas-dark/80 px-1 font-mono text-[9px] text-on-dark">
+                    {t("hc.logo")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLogo(null)}
+                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-canvas"
+                    aria-label="✕"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              {images.map((src, i) => (
+                <div key={i} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={`${i + 1}`} className="h-12 w-12 rounded-md border border-white/15 object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setImages((p) => p.filter((_, j) => j !== i))}
+                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-canvas"
+                    aria-label="✕"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div
+            className={`flex items-end gap-2 rounded-xl border bg-surface-dark-soft p-2 transition-colors ${
+              dragOver ? "border-accent-mint" : "border-white/15 focus-within:border-accent-periwinkle"
+            }`}
+          >
+            {/* Adjuntar fotos (clip) */}
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={launching || images.length >= MAX_IMAGES}
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-body transition-colors hover:bg-white/10 disabled:opacity-40"
+              aria-label={t("hc.attach")}
+              title={t("hc.attach")}
+            >
+              📎
+            </button>
+            {/* Subir logo */}
+            <button
+              type="button"
+              onClick={() => logoInputRef.current?.click()}
+              disabled={launching}
+              className="flex h-9 flex-shrink-0 items-center justify-center rounded-lg px-2 font-mono text-[10px] uppercase text-body transition-colors hover:bg-white/10 disabled:opacity-40"
+              aria-label={t("hc.logo")}
+              title={t("hc.logo")}
+            >
+              {t("hc.logo")}
+            </button>
+
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -447,6 +596,43 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               disabled={launching}
               className="max-h-40 flex-1 resize-none bg-transparent px-2 py-2 text-on-dark placeholder:text-body focus:outline-none"
             />
+
+            {/* Voz de salida (leer respuestas) */}
+            {voice.supported && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (voiceOn) voice.stopSpeaking();
+                  setVoiceOn((v) => !v);
+                }}
+                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10 ${
+                  voiceOn ? "text-accent-mint" : "text-body"
+                }`}
+                aria-label={voiceOn ? t("hc.voiceOff") : t("hc.voiceOn")}
+                title={voiceOn ? t("hc.voiceOff") : t("hc.voiceOn")}
+              >
+                {voiceOn ? "🔊" : "🔇"}
+              </button>
+            )}
+
+            {/* Micrófono (entrada por voz) */}
+            {voice.supported && (
+              <button
+                type="button"
+                onClick={() => void handleMic()}
+                disabled={launching || voice.recState === "transcribing"}
+                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors disabled:opacity-40 ${
+                  voice.recState === "recording"
+                    ? "animate-pulse bg-primary text-canvas"
+                    : "text-body hover:bg-white/10"
+                }`}
+                aria-label={voice.recState === "recording" ? t("hc.recording") : t("hc.mic")}
+                title={voice.recState === "recording" ? t("hc.recording") : t("hc.mic")}
+              >
+                {voice.recState === "transcribing" ? "…" : "🎤"}
+              </button>
+            )}
+
             <button
               type="submit"
               disabled={busy || launching || !input.trim()}
@@ -456,6 +642,29 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               ↑
             </button>
           </div>
+
+          {/* Inputs de archivo ocultos */}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => {
+              if (e.target.files) void addImages(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              if (e.target.files) void setLogoFile(e.target.files);
+              e.target.value = "";
+            }}
+          />
         </form>
       </div>
     </div>
