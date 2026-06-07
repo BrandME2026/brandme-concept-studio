@@ -26,6 +26,18 @@ export function buildWhatsAppLink(
   return `https://wa.me/${digits}?text=${text}`;
 }
 
+/**
+ * tel: con el número normalizado. Conserva un "+" inicial (código de país) y dígitos.
+ * Exige 8-15 dígitos como en WhatsApp; si no es plausible, devuelve "".
+ */
+export function buildPhoneLink(phone: string | null | undefined): string {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 8 || digits.length > 15) return "";
+  const plus = phone.trim().startsWith("+") ? "+" : "";
+  return `tel:${plus}${digits}`;
+}
+
 /** mailto con asunto pre-llenado. Valida un email mínimamente; si no, "". */
 export function buildMailtoLink(
   email: string | null | undefined,

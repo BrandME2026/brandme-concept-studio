@@ -127,6 +127,18 @@ export async function POST(req: Request) {
             .string()
             .optional()
             .describe("Correo donde recibir interesados, si lo dio. Si no, omitir."),
+          phone: z
+            .string()
+            .optional()
+            .describe("Teléfono de llamada del consultor, DISTINTO del WhatsApp (con código de país). Solo si lo dio explícitamente."),
+          sellingPoints: z
+            .string()
+            .optional()
+            .describe("Argumento comercial: cómo se vende la franquicia, qué la hace fuerte (inversión, retorno, soporte, mercado). Resumen de lo que contó el usuario."),
+          formFields: z
+            .array(z.enum(["nombre", "email", "telefono", "ciudad", "inversion", "mensaje"]))
+            .optional()
+            .describe("Campos que el consultor quiere en el formulario de contacto de la landing. Si no lo especificó, omitir (se usa el set por defecto)."),
         }),
       }),
       refineDesign: tool({

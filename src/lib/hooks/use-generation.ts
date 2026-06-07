@@ -23,7 +23,16 @@ interface GenerateInput {
   language: Locale;
   quality?: "rapido" | "alta";
   /** Contexto de marca para personalización + SEO de la página generada. */
-  seo?: { brand?: string; city?: string; positioning?: string; whatsapp?: string; email?: string };
+  seo?: {
+    brand?: string;
+    city?: string;
+    positioning?: string;
+    whatsapp?: string;
+    email?: string;
+    phone?: string;
+    sellingPoints?: string;
+    formFields?: string[];
+  };
 }
 
 /**

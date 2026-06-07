@@ -59,7 +59,14 @@ CONOCE AL USUARIO ANTES DE CREAR (esto es importante):
 - CONTACTO PARA CAPTAR INTERESADOS (importante para que la página VENDA): antes de confirmar,
   pregunta con naturalidad a qué WhatsApp y/o correo quiere que le lleguen los interesados en la
   franquicia (ej. "¿A qué WhatsApp o correo quieres que te escriban los interesados?"). La página
-  llevará botones de contacto con ese dato. Pasa whatsapp/email a launchBrand si los da.
+  llevará botones de contacto con ese dato. Pasa whatsapp/email a launchBrand si los da. Si además
+  da un TELÉFONO de llamada distinto del WhatsApp, pásalo como phone.
+- CÓMO VENDE LA FRANQUICIA (para que el copy convenza, no sea genérico): pregúntale qué hace fuerte
+  a su franquicia y por qué alguien debería invertir (ej. "¿Qué hace atractiva tu franquicia? ¿La
+  inversión, el retorno, el soporte, el mercado?"). Resume eso y pásalo como sellingPoints.
+- CAMPOS DEL FORMULARIO (opcional): si el usuario quiere, pregúntale qué datos pedirle a los
+  interesados en su formulario de contacto (de entre: nombre, email, telefono, ciudad, inversion,
+  mensaje). Pasa lo que elija como formFields. Si no lo menciona, no insistas: hay un set por defecto.
 - Tú decides qué preguntar según fluya; lo mínimo imprescindible es el nombre y la marca. Si el
   usuario tiene prisa o ya dio todo, no insistas con lo demás (el contacto se puede añadir luego).
 
@@ -67,8 +74,9 @@ CONFIRMA Y LUEGO CREA:
 - Cuando tengas lo suficiente, RESUME en una frase lo que entendiste y PIDE confirmación
   (ej. "Entonces: lanzo {marca} para {nombre} en {mercados}. ¿Le damos?").
 - SOLO cuando el usuario confirme (sí, dale, ship it, hazlo…), LLAMA la herramienta launchBrand
-  pasando la marca y el contexto que reuniste (nombre/firma, mercados, posicionamiento). No describas
-  el proceso: dispárala. Si el usuario aún no confirma o quiere ajustar, sigue conversando.
+  pasando la marca y TODO el contexto que reuniste (nombre/firma, mercados, posicionamiento,
+  whatsapp/email/phone, sellingPoints, formFields). No describas el proceso: dispárala. Si el usuario
+  aún no confirma o quiere ajustar, sigue conversando.
 
 SI YA HAY UNA PÁGINA GENERADA (te lo indica el contexto de diseño al final):
 - La página ya está a la vista del usuario. NO vuelvas a llamar launchBrand.
@@ -97,6 +105,9 @@ export interface SeoContext {
   positioning?: string;
   whatsapp?: string;
   email?: string;
+  phone?: string;
+  sellingPoints?: string;
+  formFields?: string[];
 }
 
 // Ángulos de layout/estructura para diversificar. Cada generación toma uno (por marca)
@@ -125,7 +136,7 @@ export function generateSystemPrompt(
   const lang = LANGUAGE_LABEL[language];
   const brandLine = seo.brand
     ? `\n\nDATOS DE LA MARCA (úsalos LITERALMENTE en el copy, no inventes otros):
-- Marca: ${seo.brand}${seo.city ? `\n- Ciudad/mercado: ${seo.city}` : ""}${seo.positioning ? `\n- Posicionamiento: ${seo.positioning}` : ""}`
+- Marca: ${seo.brand}${seo.city ? `\n- Ciudad/mercado: ${seo.city}` : ""}${seo.positioning ? `\n- Posicionamiento: ${seo.positioning}` : ""}${seo.sellingPoints ? `\n- ARGUMENTO DE VENTA (úsalo como eje del copy del hero y de la sección "por qué invertir"): ${seo.sellingPoints}` : ""}`
     : "";
   const seoRule = `\n
 REGLAS SEO ON-PAGE (la página debe posicionar en búsqueda local):
@@ -153,8 +164,9 @@ REGLAS SEO ON-PAGE (la página debe posicionar en búsqueda local):
   // CONTACTO (captación de interesados): la página debe CONVERTIR. Solo si hay dato.
   const hasWa = Boolean(seo.whatsapp);
   const hasEmail = Boolean(seo.email);
+  const hasPhone = Boolean(seo.phone);
   const contactRule =
-    hasWa || hasEmail
+    hasWa || hasEmail || hasPhone
       ? `\n- CAPTACIÓN DE INTERESADOS (la página debe VENDER la franquicia): incluye CTAs de contacto
   claros y visibles. Usa EXACTAMENTE estos marcadores como href (el sistema los sustituye por el
   enlace real):${
@@ -162,6 +174,11 @@ REGLAS SEO ON-PAGE (la página debe posicionar en búsqueda local):
       ? `\n  · WhatsApp: un botón FLOTANTE fijo abajo-derecha (estilo burbuja verde de WhatsApp, con icono
     SVG y aria-label) con href="{{WHATSAPP_URL}}" target="_blank" rel="noopener", MÁS un botón de
     WhatsApp dentro del hero. Texto tipo "Hablar por WhatsApp".`
+      : ""
+  }${
+    hasPhone
+      ? `\n  · Teléfono: un botón/enlace "Llámanos" con href="{{PHONE_URL}}" (icono de teléfono) en el
+    hero y/o en el footer.`
       : ""
   }${
     hasEmail
