@@ -95,9 +95,8 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   // Refs de adjuntos: los lee runLaunch sin recrear su useCallback en cada cambio.
   const imagesRef = useRef<string[]>([]);
   const logoRef = useRef<string | null>(null);
-  // Inputs de archivo ocultos (clip = fotos, logo aparte).
+  // Input de archivo oculto: el clip adjunta imágenes (un solo botón).
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   useEffect(() => {
     imagesRef.current = images;
@@ -418,7 +417,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
       r.readAsDataURL(f);
     });
 
-  /** Añade archivos como fotos ({{IMG_n}}), respetando tope y tipo/tamaño. */
+  /** Añade imágenes adjuntas ({{IMG_n}}), respetando tope y tipo/tamaño. */
   const addImages = useCallback(async (files: FileList | File[]) => {
     const arr = Array.from(files).filter(
       (f) => f.type.startsWith("image/") && f.size <= MAX_BYTES,
@@ -426,12 +425,6 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
     if (!arr.length) return;
     const urls = await Promise.all(arr.map(fileToDataUrl));
     setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES));
-  }, []);
-
-  /** Marca el primer archivo de imagen como logo del usuario. */
-  const setLogoFile = useCallback(async (files: FileList | File[]) => {
-    const f = Array.from(files).find((x) => x.type.startsWith("image/") && x.size <= MAX_BYTES);
-    if (f) setLogo(await fileToDataUrl(f));
   }, []);
 
   /** Reinicia a una conversación nueva: limpia chat, artifact, estado y URL. */
@@ -576,7 +569,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               dragOver ? "border-accent-mint" : "border-white/10 focus-within:border-accent-periwinkle/70"
             }`}
           >
-            {/* Adjuntar fotos (clip) */}
+            {/* Adjuntar (fotos + logo): un solo botón. La 1ª imagen se usa como logo. */}
             <button
               type="button"
               onClick={() => photoInputRef.current?.click()}
@@ -586,17 +579,6 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               title={t("hc.attach")}
             >
               <PaperclipIcon />
-            </button>
-            {/* Subir logo */}
-            <button
-              type="button"
-              onClick={() => logoInputRef.current?.click()}
-              disabled={launching}
-              className="flex h-9 flex-shrink-0 items-center justify-center rounded-xl px-2.5 font-mono text-[10px] uppercase tracking-wide text-body transition-colors hover:bg-white/10 hover:text-on-dark disabled:opacity-40"
-              aria-label={t("hc.logo")}
-              title={t("hc.logo")}
-            >
-              {t("hc.logo")}
             </button>
 
             <textarea
@@ -677,7 +659,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
             )}
           </div>
 
-          {/* Inputs de archivo ocultos */}
+          {/* Input de archivo oculto (un solo botón de adjuntar) */}
           <input
             ref={photoInputRef}
             type="file"
@@ -686,16 +668,6 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
             hidden
             onChange={(e) => {
               if (e.target.files) void addImages(e.target.files);
-              e.target.value = "";
-            }}
-          />
-          <input
-            ref={logoInputRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(e) => {
-              if (e.target.files) void setLogoFile(e.target.files);
               e.target.value = "";
             }}
           />
