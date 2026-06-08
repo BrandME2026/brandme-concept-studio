@@ -18,7 +18,7 @@ const NARRATED: { field: keyof DesignProposal; key: TranslationKey }[] = [
 ];
 
 /**
- * Panel colapsable que muestra "qué piensa el agente" mientras genera.
+ * Panel SIEMPRE visible que muestra "qué piensa el agente" mientras genera.
  * - Si llega reasoning real del modelo → lo muestra en vivo.
  * - Si no → narra el proceso a partir de los campos ya completados (seen).
  */
@@ -46,18 +46,17 @@ export function ReasoningPanel({
   ];
 
   return (
-    <details className="rounded-sm border border-hairline">
-      <summary className="eyebrow cursor-pointer px-3 py-2 text-body">
-        {t("reasoning.toggle")}
-      </summary>
-      <div className="border-t border-hairline px-3 py-2">
+    <div className="rounded-sm border border-hairline">
+      <div className="px-3 py-2">
         <span className="eyebrow text-body">{t("reasoning.eyebrow")}</span>
+      </div>
+      <div className="border-t border-hairline px-3 py-2">
         {hasRealReasoning ? (
-          <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap text-xs text-body">
+          <pre className="max-h-56 overflow-auto whitespace-pre-wrap text-xs text-body">
             {reasoning}
           </pre>
         ) : (
-          <div className="mt-2 max-h-56 space-y-1.5 overflow-auto">
+          <div className="max-h-56 space-y-1.5 overflow-auto">
             {narratedLines.map((line, i) => (
               <p key={i} className="text-xs text-body">
                 {line}
@@ -67,6 +66,6 @@ export function ReasoningPanel({
         )}
         <div ref={bottomRef} />
       </div>
-    </details>
+    </div>
   );
 }
