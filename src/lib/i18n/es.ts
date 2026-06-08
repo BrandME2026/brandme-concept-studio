@@ -103,6 +103,14 @@ export const es = {
   "progress.preview": "Maquetando el preview",
   "progress.note":
     "Puede tardar hasta un minuto. Estamos componiendo un diseño nuevo inspirado en la web, no una copia.",
+  "progress.elapsed": "{s}s transcurridos",
+  "progress.working": "Trabajando…",
+  "progress.tick.1": "Analizando la identidad visual de la marca…",
+  "progress.tick.2": "Eligiendo una paleta que convierte…",
+  "progress.tick.3": "Escribiendo copy que vende la franquicia…",
+  "progress.tick.4": "Maquetando secciones y micro-interacciones…",
+  "progress.tick.5": "Afinando los detalles del diseño…",
+  "progress.tick.6": "Casi listo, dando los últimos toques…",
 
   // Studio — reasoning panel (qué piensa el agente)
   "reasoning.toggle": "Ver razonamiento del agente",

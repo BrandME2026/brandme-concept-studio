@@ -105,6 +105,14 @@ export const en: Record<TranslationKey, string> = {
   "progress.preview": "Laying out the preview",
   "progress.note":
     "It may take up to a minute. We're composing a new design inspired by the site, not a copy.",
+  "progress.elapsed": "{s}s elapsed",
+  "progress.working": "Working…",
+  "progress.tick.1": "Analyzing the brand's visual identity…",
+  "progress.tick.2": "Choosing a palette that converts…",
+  "progress.tick.3": "Writing copy that sells the franchise…",
+  "progress.tick.4": "Laying out sections and micro-interactions…",
+  "progress.tick.5": "Fine-tuning the design details…",
+  "progress.tick.6": "Almost there, final touches…",
 
   // Studio — reasoning panel (what the agent is thinking)
   "reasoning.toggle": "View agent reasoning",
