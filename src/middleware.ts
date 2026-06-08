@@ -23,5 +23,5 @@ export function middleware() {
 
 // Excluir /p/ (CSP propia), assets estáticos y favicon. El resto pasa por el middleware.
 export const config = {
-  matcher: ["/((?!p/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)"],
+  matcher: ["/((?!p/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|llms.txt).*)"],
 };

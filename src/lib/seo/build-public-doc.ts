@@ -131,6 +131,7 @@ export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
       description,
       url: canonical,
       image: ogImage,
+      inLanguage: lang,
       ...(meta.city ? { areaServed: meta.city } : {}),
       ...(tel.length >= 9 ? { telephone: tel } : {}),
     },
@@ -147,6 +148,7 @@ export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
   if (faq.length) {
     graph.push({
       "@type": "FAQPage",
+      inLanguage: lang,
       mainEntity: faq.map((f) => ({
         "@type": "Question",
         name: f.q,
@@ -168,6 +170,7 @@ export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
 ${keywords ? `<meta name="keywords" content="${esc(keywords)}">` : ""}
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="${esc(canonical)}">
+${meta.slug ? `<link rel="alternate" type="text/markdown" href="${esc(canonical)}/llms.txt" title="Versión para IA">` : ""}
 <meta property="og:type" content="website">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
