@@ -3,6 +3,8 @@ import { cookies, headers } from "next/headers";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/context";
+import { AuthProvider } from "@/lib/auth/context";
+import { FirebaseAnalytics } from "@/components/analytics/firebase-analytics";
 import { es } from "@/lib/i18n/es";
 import { en } from "@/lib/i18n/en";
 import { LOCALE_COOKIE, resolveInitialLocale } from "@/lib/i18n/locale";
@@ -83,7 +85,10 @@ export default async function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="h-full flex flex-col bg-canvas text-ink font-display">
-        <LanguageProvider initialLocale={locale}>{children}</LanguageProvider>
+        <LanguageProvider initialLocale={locale}>
+          <AuthProvider>{children}</AuthProvider>
+        </LanguageProvider>
+        <FirebaseAnalytics />
       </body>
     </html>
   );

@@ -15,6 +15,7 @@
     "@ai-sdk/react": "^3.0.199",
     "@openrouter/ai-sdk-provider": "^2.9.0",
     "ai": "^6.0.197",
+    "firebase": "^12.14.0",
     "ipaddr.js": "^2.4.0",
     "next": "16.2.7",
     "node-vibrant": "^4.0.4",

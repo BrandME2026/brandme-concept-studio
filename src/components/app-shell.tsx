@@ -12,6 +12,7 @@ import type { DesignTokens } from "@/types/design";
 import { useLocale, useT } from "@/lib/i18n/context";
 import { useGeneration } from "@/lib/hooks/use-generation";
 import { useVoice } from "@/lib/hooks/use-voice";
+import { track } from "@/lib/analytics/track";
 import { ConversationSidebar } from "./conversation-sidebar";
 import { ResponsivePreview } from "./responsive-preview";
 import { PreviewFullscreen } from "./preview-fullscreen";
@@ -316,7 +317,9 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
         const ctx = toolCall.input as Parameters<typeof runLaunch>[0];
         if (!ctx?.brand) return;
         void (async () => {
+          track("launch_started", { brand: ctx.brand, city: ctx.markets });
           const out = await runLaunch(ctx);
+          if (out.ok) track("launch_completed", { brand: ctx.brand });
           // Mensaje claro al agente para evitar bucles de reintento.
           let message: string | undefined;
           if (!out.ok) {

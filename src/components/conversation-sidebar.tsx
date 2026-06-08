@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
 import { LanguageToggle } from "./language-toggle";
+import { AuthButton } from "./auth/auth-button";
 import { InboxIcon, GlobeIcon } from "./ui/icons";
 
 interface Item {
@@ -32,11 +33,14 @@ export function ConversationSidebar({
 
   return (
     <aside className="hidden w-60 flex-shrink-0 flex-col border-r border-hairline bg-canvas-dark text-on-dark lg:flex">
-      <div className="flex items-center justify-between px-4 py-4">
+      <div className="flex items-center justify-between gap-2 px-4 py-4">
         <span className="text-base font-medium tracking-tight">
           Brand<span className="text-accent-orange">ME</span>.ai
         </span>
-        <LanguageToggle variant="dark" />
+        <div className="flex items-center gap-2">
+          <AuthButton />
+          <LanguageToggle variant="dark" />
+        </div>
       </div>
 
       <button

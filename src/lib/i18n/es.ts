@@ -371,6 +371,22 @@ export const es = {
   "ll.footer.privacy": "Privacidad",
   "ll.footer.terms": "Términos",
   "ll.footer.rights": "© 2026 BrandME.ai. Todos los derechos reservados.",
+
+  // Auth (login opcional con Firebase)
+  "auth.signIn": "Iniciar sesión",
+  "auth.signOut": "Cerrar sesión",
+  "auth.title": "Entra en BrandME.ai",
+  "auth.subtitle": "Guarda tu historial y recupéralo en cualquier dispositivo.",
+  "auth.google": "Continuar con Google",
+  "auth.or": "o",
+  "auth.email": "Correo",
+  "auth.password": "Contraseña",
+  "auth.continue": "Continuar con correo",
+  "auth.create": "Crear cuenta",
+  "auth.haveAccount": "¿Ya tienes cuenta? Inicia sesión",
+  "auth.noAccount": "¿No tienes cuenta? Regístrate",
+  "auth.close": "Cerrar",
+  "auth.error": "No se pudo completar. Revisa los datos e inténtalo de nuevo.",
 } as const;
 
 export type TranslationKey = keyof typeof es;

@@ -373,4 +373,20 @@ export const en: Record<TranslationKey, string> = {
   "ll.footer.privacy": "Privacy",
   "ll.footer.terms": "Terms",
   "ll.footer.rights": "© 2026 BrandME.ai. All rights reserved.",
+
+  // Auth (optional Firebase login)
+  "auth.signIn": "Sign in",
+  "auth.signOut": "Sign out",
+  "auth.title": "Sign in to BrandME.ai",
+  "auth.subtitle": "Save your history and pick it up on any device.",
+  "auth.google": "Continue with Google",
+  "auth.or": "or",
+  "auth.email": "Email",
+  "auth.password": "Password",
+  "auth.continue": "Continue with email",
+  "auth.create": "Create account",
+  "auth.haveAccount": "Already have an account? Sign in",
+  "auth.noAccount": "No account? Sign up",
+  "auth.close": "Close",
+  "auth.error": "Couldn't complete. Check your details and try again.",
 };
