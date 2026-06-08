@@ -12,6 +12,8 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({
   // slug de la web que el usuario quiere publicar al volver del pago (opcional).
   slug: z.string().max(80).optional(),
+  // email del usuario logueado (Firebase) para prellenar el checkout y no pedirlo de nuevo.
+  email: z.string().email().max(160).optional(),
 });
 
 const fail = (code: string, message: string, status: number) =>
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
   }
   const parsed = bodySchema.safeParse(body ?? {});
   const slug = parsed.success ? parsed.data.slug : undefined;
+  const email = parsed.success ? parsed.data.email : undefined;
 
   try {
     const sessionId = await getSessionId();
@@ -50,7 +53,10 @@ export async function POST(request: Request) {
     // Reusar Customer si la sesión ya tiene uno; si no, crearlo y guardarlo.
     let customerId = (await getSubscriptionBySession(sessionId))?.stripeCustomerId;
     if (!customerId) {
-      const customer = await stripe.customers.create({ metadata: { session_id: sessionId } });
+      const customer = await stripe.customers.create({
+        ...(email ? { email } : {}),
+        metadata: { session_id: sessionId },
+      });
       customerId = customer.id;
       await upsertCustomer({ sessionId, customerId });
     }

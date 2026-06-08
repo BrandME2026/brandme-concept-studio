@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useT } from "@/lib/i18n/context";
+import { useAuth } from "@/lib/auth/context";
 
 /** Acciones sobre la propuesta generada: copiar HTML, descargar DESIGN.md, compartir, regenerar. */
 export function ProposalActions({
@@ -28,6 +29,7 @@ export function ProposalActions({
   const [publishState, setPublishState] = useState<"idle" | "working" | "done">("idle");
   const [publishError, setPublishError] = useState("");
   const t = useT();
+  const { user } = useAuth();
 
   /** Publica la web: si hay suscripción activa marca published; si no, manda a Stripe. */
   async function publish() {
@@ -44,7 +46,7 @@ export function ProposalActions({
         const res = await fetch("/api/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slug }),
+          body: JSON.stringify({ slug, email: user?.email ?? undefined }),
         });
         const json = await res.json().catch(() => null);
         if (json?.data?.url) {

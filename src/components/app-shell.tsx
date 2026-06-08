@@ -70,6 +70,8 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   const [mobileTab, setMobileTab] = useState<MobileTab>("chat");
   // HTML mostrado en el overlay de pantalla completa (null = cerrado).
   const [fullscreenHtml, setFullscreenHtml] = useState<string | null>(null);
+  // Banner de éxito tras volver del pago: slug de la web recién publicada (null = oculto).
+  const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
   // Adjuntos del usuario para la generación: fotos ({{IMG_n}}) y logo propio ({{LOGO}}).
   const [images, setImages] = useState<string[]>([]);
   const [logo, setLogo] = useState<string | null>(null);
@@ -124,15 +126,20 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
     }
     let cancelled = false;
     void (async () => {
-      // El webhook puede tardar; reintentamos hasta 5 veces (~10s) antes de rendirnos.
-      for (let i = 0; i < 5 && !cancelled; i++) {
+      // El webhook puede tardar; reintentamos hasta 8 veces (~16s) antes de rendirnos.
+      for (let i = 0; i < 8 && !cancelled; i++) {
         const sub = await fetch("/api/subscription").then((r) => r.json()).catch(() => null);
         if (sub?.data?.active) {
-          await fetch("/api/publish", {
+          const pub = await fetch("/api/publish", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ slug }),
-          }).catch(() => null);
+          })
+            .then((r) => r.json())
+            .catch(() => null);
+          // Feedback visible: banner con enlace a la web publicada (antes el usuario
+          // aterrizaba en la home sin saber qué pasó tras pagar).
+          if (pub?.success && !cancelled) setPublishedSlug(slug);
           break;
         }
         await new Promise((r) => setTimeout(r, 2000));
@@ -800,6 +807,32 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
 
       {fullscreenHtml !== null && (
         <PreviewFullscreen html={fullscreenHtml} onClose={() => setFullscreenHtml(null)} />
+      )}
+
+      {/* Confirmación tras pagar+publicar: el usuario ve el resultado y el enlace en vivo. */}
+      {publishedSlug && (
+        <div className="animate-msg fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-accent-mint/40 bg-surface-dark-soft px-4 py-3 text-sm text-on-dark shadow-lg">
+          <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-accent-mint text-ink">
+            <CheckIcon size={14} />
+          </span>
+          <span>{t("pub.success")}</span>
+          <a
+            href={`/p/${publishedSlug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg bg-accent-mint px-3 py-1 font-medium text-ink transition-opacity hover:opacity-90"
+          >
+            {t("pub.view")}
+          </a>
+          <button
+            type="button"
+            onClick={() => setPublishedSlug(null)}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-body hover:text-on-dark"
+            aria-label={t("pub.dismiss")}
+          >
+            <XIcon size={14} />
+          </button>
+        </div>
       )}
       </div>
     </div>

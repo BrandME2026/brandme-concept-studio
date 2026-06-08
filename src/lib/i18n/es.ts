@@ -395,6 +395,11 @@ export const es = {
   "auth.noAccount": "¿No tienes cuenta? Regístrate",
   "auth.close": "Cerrar",
   "auth.error": "No se pudo completar. Revisa los datos e inténtalo de nuevo.",
+
+  // Éxito post-pago
+  "pub.success": "¡Listo! Tu página está publicada y en vivo.",
+  "pub.view": "Ver mi página",
+  "pub.dismiss": "Cerrar",
 } as const;
 
 export type TranslationKey = keyof typeof es;

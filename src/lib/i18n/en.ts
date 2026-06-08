@@ -397,4 +397,9 @@ export const en: Record<TranslationKey, string> = {
   "auth.noAccount": "No account? Sign up",
   "auth.close": "Close",
   "auth.error": "Couldn't complete. Check your details and try again.",
+
+  // Post-payment success
+  "pub.success": "Done! Your page is published and live.",
+  "pub.view": "View my page",
+  "pub.dismiss": "Close",
 };
