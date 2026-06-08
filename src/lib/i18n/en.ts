@@ -182,6 +182,14 @@ export const en: Record<TranslationKey, string> = {
   "leads.col.message": "Message",
   "leads.col.date": "Date",
   "leads.navLink": "Prospects",
+  "leads.kpi.total": "Total prospects",
+  "leads.kpi.form": "From form",
+  "leads.kpi.agent": "From agent",
+  "leads.kpi.last7": "Last 7 days",
+  "leads.kpi.last30": "Last 30 days",
+  "leads.kpi.topPage": "Top page",
+  "leads.kpi.contactRate": "Full contact info",
+  "leads.kpi.none": "—",
 
   // Home chat (full-screen conversational interface)
   "hc.greeting": "Which franchise brand do you want to launch today?",

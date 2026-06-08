@@ -180,6 +180,14 @@ export const es = {
   "leads.col.message": "Mensaje",
   "leads.col.date": "Fecha",
   "leads.navLink": "Interesados",
+  "leads.kpi.total": "Total interesados",
+  "leads.kpi.form": "Por formulario",
+  "leads.kpi.agent": "Por agente",
+  "leads.kpi.last7": "Últimos 7 días",
+  "leads.kpi.last30": "Últimos 30 días",
+  "leads.kpi.topPage": "Página con más interesados",
+  "leads.kpi.contactRate": "Con contacto completo",
+  "leads.kpi.none": "—",
 
   // Home chat (interfaz conversacional full-screen)
   "hc.greeting": "¿Qué marca de franquicia quieres lanzar hoy?",
