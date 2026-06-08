@@ -219,7 +219,14 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
           body: JSON.stringify({ url }),
         });
         const ej = await e.json().catch(() => null);
-        if (!ej?.success) return { ok: false as const };
+        if (!ej?.success) {
+          // El sitio bloquea bots / tarda demasiado. Si la URL la resolvimos nosotros,
+          // puede estar mal o el sitio ser inaccesible: pedimos la URL oficial al usuario
+          // para reintentar (recuperable). Si el usuario ya la había dado, es fallo real.
+          return ctx.url
+            ? { ok: false as const }
+            : { ok: false as const, needsUrl: true as const };
+        }
         const extr: Extraction = ej.data;
         setExtraction(extr);
 
