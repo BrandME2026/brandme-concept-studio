@@ -23,6 +23,29 @@ export function buildSrcDoc(html: string): string {
 ${html}
 <script>
   (function () {
+    // Navegación dentro del iframe (srcdoc, sin same-origin): un <a href="#seccion">
+    // o un href externo recargaría el documento a una URL inválida → pantalla en
+    // blanco ("pierde el diseño"). Interceptamos: anchors internos hacen scroll suave;
+    // los externos (http/wa/mailto/tel) abren en una pestaña nueva del navegador real.
+    document.addEventListener("click", function (ev) {
+      var a = ev.target && ev.target.closest && ev.target.closest("a[href]");
+      if (!a) return;
+      var href = a.getAttribute("href") || "";
+      if (href.charAt(0) === "#") {
+        ev.preventDefault();
+        var el = href.length > 1 && document.querySelector(href);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      if (/^(https?:|mailto:|tel:|whatsapp:|wa\.me)/i.test(href)) {
+        ev.preventDefault();
+        window.open(href, "_blank", "noopener,noreferrer");
+      }
+    });
+    // El submit de un <form> también recargaría a una URL inválida → blanco. Lo
+    // neutralizamos: en el preview el formulario es demostrativo (no envía).
+    document.addEventListener("submit", function (ev) { ev.preventDefault(); });
+
     function boot() {
       try {
         if (window.gsap && window.ScrollTrigger) {

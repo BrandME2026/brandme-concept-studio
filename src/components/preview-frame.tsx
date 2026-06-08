@@ -16,7 +16,7 @@ export function PreviewFrame({ html }: { html: string }) {
     <iframe
       title="Preview de la propuesta"
       srcDoc={srcDoc}
-      sandbox="allow-scripts"
+      sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
       className="h-full w-full border-0 bg-canvas"
     />
   );
