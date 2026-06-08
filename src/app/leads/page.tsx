@@ -30,12 +30,12 @@ export default function LeadsPage() {
   }, []);
 
   return (
-    <main className="flex flex-1 flex-col bg-canvas">
-      <header className="flex items-center justify-between border-b border-hairline px-4 py-3">
-        <Link href="/" className="eyebrow text-body hover:opacity-70">
+    <main className="flex min-h-[100dvh] flex-1 flex-col bg-canvas-dark text-on-dark">
+      <header className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <Link href="/" className="eyebrow text-body hover:text-on-dark">
           ← BrandME.ai
         </Link>
-        <span className="text-sm font-semibold text-ink">{t("leads.title")}</span>
+        <span className="text-sm font-semibold text-on-dark">{t("leads.title")}</span>
         <span className="w-16" />
       </header>
 
@@ -53,9 +53,9 @@ export default function LeadsPage() {
         )}
 
         {items && items.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-hairline">
+          <div className="overflow-x-auto rounded-lg border border-white/10">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-hairline bg-canvas-dark/5 text-xs uppercase text-body">
+              <thead className="border-b border-white/10 bg-white/5 text-xs uppercase text-body">
                 <tr>
                   <th className="px-3 py-2">{t("leads.col.name")}</th>
                   <th className="px-3 py-2">{t("leads.col.contact")}</th>
@@ -66,8 +66,8 @@ export default function LeadsPage() {
               </thead>
               <tbody>
                 {items.map((l) => (
-                  <tr key={l.id} className="border-b border-hairline/60 last:border-0">
-                    <td className="px-3 py-2 font-medium text-ink">{l.name}</td>
+                  <tr key={l.id} className="border-b border-white/5 last:border-0">
+                    <td className="px-3 py-2 font-medium text-on-dark">{l.name}</td>
                     <td className="px-3 py-2 text-body">
                       {l.phone && (
                         <a href={`tel:${l.phone}`} className="block hover:text-accent-orange">

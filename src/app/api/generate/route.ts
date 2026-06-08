@@ -113,7 +113,7 @@ export async function POST(req: Request) {
   const dupBrand = seo?.brand?.trim();
   if (isDbConfigured() && dupBrand) {
     try {
-      const existing = await findGenerationByBrandCity(dupBrand, seo?.city?.trim() ?? null);
+      const existing = await findGenerationByBrandCity(dupBrand, seo?.city?.trim() ?? null, sessionId);
       if (existing?.slug) {
         return NextResponse.json({
           success: true,

@@ -254,17 +254,19 @@ function safeJsonArray<T>(s: string | null): T[] | null {
 }
 
 /**
- * Busca una generación existente por marca (+ ciudad opcional), sin filtrar por sesión.
- * Anti-duplicado: si ya existe la misma marca+ciudad, reusamos esa página en vez de
- * generar otra clónica. La comparación usa normalizeKey (sin acentos ni puntuación) para
- * que "McDonald's", "McDonalds" y "mcdonald s" cuenten como la misma marca. El filtrado
- * se hace en memoria porque normalizar puntuación en SQL puro es frágil; el volumen de
- * marcas es bajo (decenas), así que es barato. city vacía ⇒ coincide con registros sin
- * ciudad o de la misma ciudad normalizada.
+ * Busca una generación existente del MISMO consultor (sessionId) por marca (+ ciudad).
+ * Anti-duplicado POR USUARIO: un consultor no regenera su propia marca+ciudad (ahorra
+ * tokens, evita confusión), pero consultores distintos SÍ pueden tener cada uno su
+ * propia página de la misma marca+ciudad — cada una con su slug único y su contacto.
+ * La comparación usa normalizeKey (sin acentos ni puntuación) para que "McDonald's",
+ * "McDonalds" y "mcdonald s" cuenten como la misma marca. El filtrado se hace en memoria
+ * (volumen por sesión es bajo). city vacía ⇒ coincide con registros sin ciudad o de la
+ * misma ciudad normalizada.
  */
 export async function findGenerationByBrandCity(
   brand: string,
   city: string | null,
+  sessionId: string,
 ): Promise<{ id: string; slug: string | null } | null> {
   await ensureSchema();
   const bKey = normalizeKey(brand);
@@ -277,7 +279,8 @@ export async function findGenerationByBrandCity(
     city: string | null;
   }>(
     `SELECT id, slug, brand, city FROM generations
-     WHERE brand IS NOT NULL ORDER BY created_at ASC`,
+     WHERE brand IS NOT NULL AND session_id = $1 ORDER BY created_at ASC`,
+    [sessionId],
   );
   const match = rows.find(
     (r) => normalizeKey(r.brand) === bKey && normalizeKey(r.city) === cKey,
