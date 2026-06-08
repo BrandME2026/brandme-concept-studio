@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 type RecState = "idle" | "recording" | "transcribing";
 
@@ -39,11 +39,30 @@ export function useVoice(opts?: { language?: string }) {
   const resolveRef = useRef<((text: string) => void) | null>(null);
 
   // false en SSR/primer render (sin mismatch); capacidad real tras hidratar.
-  const supported = useSyncExternalStore(
+  const browserSupported = useSyncExternalStore(
     emptySubscribe,
     getSupportedClient,
     getSupportedServer,
   );
+
+  // El server debe tener OPENAI_API_KEY para STT/TTS; si no, no mostramos los
+  // controles de voz (evita botones que fallan en silencio con 503).
+  const [serverReady, setServerReady] = useState(false);
+  useEffect(() => {
+    if (!browserSupported) return;
+    let cancelled = false;
+    fetch("/api/voice-capabilities")
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled) setServerReady(Boolean(j?.data?.voice));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [browserSupported]);
+
+  const supported = browserSupported && serverReady;
 
   const cleanupStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
