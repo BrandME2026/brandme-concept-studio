@@ -22,9 +22,10 @@ export function middleware(req: NextRequest) {
 
   const isEmbed = req.nextUrl.pathname.startsWith("/embed/");
   if (isEmbed) {
-    // Permitir el embebido (incl. el origen opaco del sandbox de /p/), pero solo desde
-    // nuestro propio sitio — no de terceros. frame-ancestors cubre el caso del sandbox.
-    h.set("Content-Security-Policy", "frame-ancestors 'self' https:");
+    // Permitir el embebido SOLO desde nuestro propio sitio (incl. el origen opaco del
+    // sandbox de /p/, que se resuelve por la cadena de framing). No usamos el token
+    // `https:` (dejaría que cualquier sitio HTTPS embeba el form → clickjacking/phishing).
+    h.set("Content-Security-Policy", "frame-ancestors 'self'");
   } else {
     // El resto de la app no debe embeberse en sitios de terceros (anti-clickjacking).
     h.set("X-Frame-Options", "SAMEORIGIN");
