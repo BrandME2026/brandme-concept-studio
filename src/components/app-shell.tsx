@@ -14,6 +14,7 @@ import { useGeneration } from "@/lib/hooks/use-generation";
 import { useVoice } from "@/lib/hooks/use-voice";
 import { track } from "@/lib/analytics/track";
 import { ConversationSidebar } from "./conversation-sidebar";
+import { TopNav } from "./top-nav";
 import { ResponsivePreview } from "./responsive-preview";
 import { PreviewFullscreen } from "./preview-fullscreen";
 import { GenerationProgress } from "./generation-progress";
@@ -736,7 +737,9 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   const hasArtifact = Boolean(gen.proposal?.proposal || savedPage || gen.generating || launching);
 
   return (
-    <div className="flex h-full flex-1">
+    <div className="flex h-full flex-1 flex-col">
+      <TopNav />
+      <div className="flex min-h-0 flex-1">
       <ConversationSidebar activeId={convId} onNew={handleNew} />
 
       {/* Desktop: chat solo (full) hasta que haya web → entonces split con el panel */}
@@ -791,6 +794,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
       {fullscreenHtml !== null && (
         <PreviewFullscreen html={fullscreenHtml} onClose={() => setFullscreenHtml(null)} />
       )}
+      </div>
     </div>
   );
 }
