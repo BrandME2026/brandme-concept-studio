@@ -1,23 +1,34 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Headers de seguridad globales (defensa en profundidad). Se aplican a toda la app
  * EXCEPTO /p/* — esas rutas sirven el HTML del LLM con su propia CSP sandbox (origen
- * opaco) desde el route handler; el middleware NO debe pisarla. Los /embed/* sí pasan
- * por aquí: X-Frame-Options SAMEORIGIN los permite porque se cargan en el documento
- * de la página pública, que es del mismo origen.
+ * opaco) desde el route handler; el middleware NO debe pisarla.
+ *
+ * CASO /embed/* (form de captura + agente): se incrustan DENTRO de la página pública
+ * /p/[slug], que corre bajo CSP `sandbox` → su origen es OPACO. Con X-Frame-Options:
+ * SAMEORIGIN el navegador los bloquea ("refused to connect") porque el origen opaco no
+ * cuenta como "same origin". Por eso a /embed/* NO les ponemos X-Frame-Options y usamos
+ * CSP `frame-ancestors` para permitir el embebido desde nuestro propio sitio.
  */
-export function middleware() {
+export function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const h = res.headers;
   // HSTS: fuerza HTTPS en visitas futuras (Railway sirve por TLS).
   h.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-  // Anti-clickjacking: la app no debe poder embeberse en sitios de terceros.
-  h.set("X-Frame-Options", "SAMEORIGIN");
   h.set("X-Content-Type-Options", "nosniff");
   h.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  // La app no usa cámara/micro/geolocalización: denegarlas reduce superficie.
   h.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+  const isEmbed = req.nextUrl.pathname.startsWith("/embed/");
+  if (isEmbed) {
+    // Permitir el embebido (incl. el origen opaco del sandbox de /p/), pero solo desde
+    // nuestro propio sitio — no de terceros. frame-ancestors cubre el caso del sandbox.
+    h.set("Content-Security-Policy", "frame-ancestors 'self' https:");
+  } else {
+    // El resto de la app no debe embeberse en sitios de terceros (anti-clickjacking).
+    h.set("X-Frame-Options", "SAMEORIGIN");
+  }
   return res;
 }
 
