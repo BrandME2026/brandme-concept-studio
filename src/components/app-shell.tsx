@@ -18,6 +18,17 @@ import { PreviewFullscreen } from "./preview-fullscreen";
 import { GenerationProgress } from "./generation-progress";
 import { ProposalActions } from "./proposal-actions";
 import { Markdown } from "./markdown";
+import {
+  PaperclipIcon,
+  Volume2Icon,
+  VolumeOffIcon,
+  MicIcon,
+  ArrowUpIcon,
+  StopIcon,
+  XIcon,
+  CopyIcon,
+  CheckIcon,
+} from "./ui/icons";
 
 interface Extraction {
   tokens: DesignTokens;
@@ -133,7 +144,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   }, []);
 
   // ¿Hay página? (recién generada o rehidratada). Define el modo del chat.
-  const hasPage = !!gen.proposal || !!savedPage;
+  const hasPage = !!gen.proposal?.proposal || !!savedPage;
 
   // Transport memoizado: el body lleva tokens cuando ya hay diseño (modo afinar).
   const transport = useMemo(
@@ -352,6 +363,10 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    // Best practice 2026: solo auto-scrollear si el usuario ya está cerca del fondo
+    // (<120px). Si subió a leer mensajes anteriores, NO le robamos la posición.
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (!nearBottom) return;
     const id = requestAnimationFrame(() => {
       el.scrollTo({ top: el.scrollHeight, behavior: "instant" as ScrollBehavior });
     });
@@ -463,35 +478,37 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-4 py-6">
+            <div className="flex flex-col gap-6 py-6">
               {chat.messages.map((m) => {
                 const text = messageText(m);
                 if (!text) return null;
                 const isUser = m.role === "user";
+                // Usuario: burbuja con acento alineada a la derecha. Agente: sin borde
+                // duro, ancho cómodo y aire (best practice 2026: respuestas full-width,
+                // no encerradas en burbuja), con acción "copiar" al hover.
+                if (isUser) {
+                  return (
+                    <div key={m.id} className="flex animate-msg justify-end">
+                      <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-accent-periwinkle px-4 py-2.5 text-sm leading-relaxed text-ink">
+                        {text}
+                      </div>
+                    </div>
+                  );
+                }
                 return (
-                  <div
-                    key={m.id}
-                    className={`flex animate-msg ${isUser ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[88%] rounded-lg px-4 py-2.5 text-sm leading-relaxed ${
-                        isUser
-                          ? "whitespace-pre-wrap bg-accent-periwinkle text-ink"
-                          : "border border-white/10 bg-surface-dark-soft text-on-dark"
-                      }`}
-                    >
-                      {isUser ? text : <Markdown>{text}</Markdown>}
+                  <div key={m.id} className="group flex animate-msg flex-col gap-1">
+                    <div className="text-sm leading-[1.7] text-on-dark [&_p]:my-0">
+                      <Markdown>{text}</Markdown>
+                    </div>
+                    <div className="-ml-1 h-7">
+                      <CopyButton text={text} label={t("hc.copy")} />
                     </div>
                   </div>
                 );
               })}
               {(busy || launching) && (
-                <div className="flex justify-start">
-                  <div className="rounded-lg border border-white/10 bg-surface-dark-soft px-4 py-3">
-                    <span className="inline-flex gap-1">
-                      <Dot /> <Dot delay="150ms" /> <Dot delay="300ms" />
-                    </span>
-                  </div>
+                <div className="flex animate-msg items-center gap-1 py-1">
+                  <Dot /> <Dot delay="150ms" /> <Dot delay="300ms" />
                 </div>
               )}
             </div>
@@ -530,10 +547,10 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
                   <button
                     type="button"
                     onClick={() => setLogo(null)}
-                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-canvas"
-                    aria-label="✕"
+                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-canvas"
+                    aria-label={t("hc.remove")}
                   >
-                    ✕
+                    <XIcon size={10} />
                   </button>
                 </div>
               )}
@@ -544,10 +561,10 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
                   <button
                     type="button"
                     onClick={() => setImages((p) => p.filter((_, j) => j !== i))}
-                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-canvas"
-                    aria-label="✕"
+                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-canvas"
+                    aria-label={t("hc.remove")}
                   >
-                    ✕
+                    <XIcon size={10} />
                   </button>
                 </div>
               ))}
@@ -555,8 +572,8 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
           )}
 
           <div
-            className={`flex items-end gap-2 rounded-xl border bg-surface-dark-soft p-2 transition-colors ${
-              dragOver ? "border-accent-mint" : "border-white/15 focus-within:border-accent-periwinkle"
+            className={`flex items-end gap-1.5 rounded-2xl border bg-surface-dark-soft/80 p-2 backdrop-blur-md transition-colors ${
+              dragOver ? "border-accent-mint" : "border-white/10 focus-within:border-accent-periwinkle/70"
             }`}
           >
             {/* Adjuntar fotos (clip) */}
@@ -564,18 +581,18 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               type="button"
               onClick={() => photoInputRef.current?.click()}
               disabled={launching || images.length >= MAX_IMAGES}
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-body transition-colors hover:bg-white/10 disabled:opacity-40"
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-body transition-colors hover:bg-white/10 hover:text-on-dark disabled:opacity-40"
               aria-label={t("hc.attach")}
               title={t("hc.attach")}
             >
-              📎
+              <PaperclipIcon />
             </button>
             {/* Subir logo */}
             <button
               type="button"
               onClick={() => logoInputRef.current?.click()}
               disabled={launching}
-              className="flex h-9 flex-shrink-0 items-center justify-center rounded-lg px-2 font-mono text-[10px] uppercase text-body transition-colors hover:bg-white/10 disabled:opacity-40"
+              className="flex h-9 flex-shrink-0 items-center justify-center rounded-xl px-2.5 font-mono text-[10px] uppercase tracking-wide text-body transition-colors hover:bg-white/10 hover:text-on-dark disabled:opacity-40"
               aria-label={t("hc.logo")}
               title={t("hc.logo")}
             >
@@ -594,7 +611,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
               rows={1}
               placeholder={t("hc.placeholder")}
               disabled={launching}
-              className="max-h-40 flex-1 resize-none bg-transparent px-2 py-2 text-on-dark placeholder:text-body focus:outline-none"
+              className="max-h-40 flex-1 resize-none bg-transparent px-2 py-2 text-on-dark placeholder:text-body/70 focus:outline-none"
             />
 
             {/* Voz de salida (leer respuestas) */}
@@ -605,13 +622,13 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
                   if (voiceOn) voice.stopSpeaking();
                   setVoiceOn((v) => !v);
                 }}
-                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10 ${
-                  voiceOn ? "text-accent-mint" : "text-body"
+                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-white/10 ${
+                  voiceOn ? "text-accent-mint" : "text-body hover:text-on-dark"
                 }`}
                 aria-label={voiceOn ? t("hc.voiceOff") : t("hc.voiceOn")}
                 title={voiceOn ? t("hc.voiceOff") : t("hc.voiceOn")}
               >
-                {voiceOn ? "🔊" : "🔇"}
+                {voiceOn ? <Volume2Icon /> : <VolumeOffIcon />}
               </button>
             )}
 
@@ -621,26 +638,43 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
                 type="button"
                 onClick={() => void handleMic()}
                 disabled={launching || voice.recState === "transcribing"}
-                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors disabled:opacity-40 ${
+                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-40 ${
                   voice.recState === "recording"
                     ? "animate-pulse bg-primary text-canvas"
-                    : "text-body hover:bg-white/10"
+                    : "text-body hover:bg-white/10 hover:text-on-dark"
                 }`}
                 aria-label={voice.recState === "recording" ? t("hc.recording") : t("hc.mic")}
                 title={voice.recState === "recording" ? t("hc.recording") : t("hc.mic")}
               >
-                {voice.recState === "transcribing" ? "…" : "🎤"}
+                {voice.recState === "transcribing" ? (
+                  <span className="text-base leading-none">…</span>
+                ) : (
+                  <MicIcon />
+                )}
               </button>
             )}
 
-            <button
-              type="submit"
-              disabled={busy || launching || !input.trim()}
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-accent-mint text-ink transition-opacity hover:opacity-90 disabled:opacity-40"
-              aria-label={t("hc.send")}
-            >
-              ↑
-            </button>
+            {/* Enviar / Detener: durante el streaming el botón corta la generación. */}
+            {busy ? (
+              <button
+                type="button"
+                onClick={() => chat.stop?.()}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white/15 text-on-dark transition-colors hover:bg-white/25"
+                aria-label={t("hc.stop")}
+                title={t("hc.stop")}
+              >
+                <StopIcon size={16} />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={launching || !input.trim()}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent-mint text-ink transition-all hover:opacity-90 disabled:opacity-30"
+                aria-label={t("hc.send")}
+              >
+                <ArrowUpIcon size={18} />
+              </button>
+            )}
           </div>
 
           {/* Inputs de archivo ocultos */}
@@ -671,7 +705,9 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
   );
 
   // ── Panel del artifact (preview) ────────────────────────────────────────
-  const proposal = gen.proposal;
+  // Solo es una propuesta renderizable si trae el objeto generado. El caso duplicado
+  // devuelve proposal===null (se maneja por slug) y NO debe llegar aquí.
+  const proposal = gen.proposal?.proposal ? gen.proposal : null;
   const artifactPanel = (
     <div className="flex h-full flex-col bg-canvas">
       {proposal ? (
@@ -722,7 +758,7 @@ export function AppShell({ initial }: { initial?: InitialConversation }) {
 
   // El panel del artifact SOLO aparece cuando hay algo que mostrar (web generada,
   // guardada o en construcción). Si no, el chat ocupa toda la pantalla.
-  const hasArtifact = Boolean(gen.proposal || savedPage || gen.generating || launching);
+  const hasArtifact = Boolean(gen.proposal?.proposal || savedPage || gen.generating || launching);
 
   return (
     <div className="flex h-full flex-1">
@@ -790,5 +826,25 @@ function Dot({ delay = "0ms" }: { delay?: string }) {
       className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-body"
       style={{ animationDelay: delay }}
     />
+  );
+}
+
+/** Botón "copiar" para respuestas del agente: confirma con un check transitorio. */
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigator.clipboard?.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className="flex h-7 w-7 items-center justify-center rounded-md text-body opacity-0 transition-all hover:bg-white/10 hover:text-on-dark group-hover:opacity-100"
+      aria-label={label}
+      title={label}
+    >
+      {copied ? <CheckIcon size={14} className="text-accent-mint" /> : <CopyIcon size={14} />}
+    </button>
   );
 }

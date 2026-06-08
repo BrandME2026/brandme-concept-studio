@@ -1,5 +1,5 @@
 /**
- * Contenido de la landing de marketing (Francast.ai). Arrays tipados: las claves i18n
+ * Contenido de la landing de marketing (BrandME.ai). Arrays tipados: las claves i18n
  * (`*Key`) se traducen al renderizar; los literales (marcas, consultores, dominios,
  * números) son contenido de marketing del artifact y no se traducen. Mismo patrón que
  * INVESTOR_PROFILES en onboarding.ts.

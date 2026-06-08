@@ -18,15 +18,15 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Webs creadas con Francast.ai | Galería pública",
+  title: "Webs creadas con BrandME.ai | Galería pública",
   description:
-    "Galería pública de páginas de marketing reales generadas por IA con Francast.ai. Explora las webs en vivo o crea la tuya.",
+    "Galería pública de páginas de marketing reales generadas por IA con BrandME.ai. Explora las webs en vivo o crea la tuya.",
   alternates: { canonical: "/webs" },
   openGraph: {
     type: "website",
-    title: "Webs creadas con Francast.ai",
+    title: "Webs creadas con BrandME.ai",
     description:
-      "Galería pública de páginas de marketing reales generadas por IA con Francast.ai.",
+      "Galería pública de páginas de marketing reales generadas por IA con BrandME.ai.",
     url: `${SITE_URL}/webs`,
   },
   robots: { index: true, follow: true },

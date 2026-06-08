@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
 import { LanguageToggle } from "./language-toggle";
+import { InboxIcon, GlobeIcon } from "./ui/icons";
 
 interface Item {
   id: string;
@@ -33,7 +34,7 @@ export function ConversationSidebar({
     <aside className="hidden w-60 flex-shrink-0 flex-col border-r border-hairline bg-canvas-dark text-on-dark lg:flex">
       <div className="flex items-center justify-between px-4 py-4">
         <span className="text-base font-medium tracking-tight">
-          Franc<span className="text-accent-orange">ast</span>.ai
+          Brand<span className="text-accent-orange">ME</span>.ai
         </span>
         <LanguageToggle variant="dark" />
       </div>
@@ -68,14 +69,16 @@ export function ConversationSidebar({
 
       <Link
         href="/leads"
-        className="mx-3 mb-1 rounded-lg border border-white/15 px-3 py-2 text-left text-sm text-body transition-colors hover:border-accent-periwinkle hover:text-on-dark"
+        className="mx-3 mb-1 flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-left text-sm text-body transition-colors hover:border-accent-periwinkle hover:text-on-dark"
       >
+        <InboxIcon size={16} />
         {t("leads.navLink")}
       </Link>
       <Link
         href="/webs"
-        className="mx-3 mb-4 rounded-lg border border-white/15 px-3 py-2 text-left text-sm text-body transition-colors hover:border-accent-periwinkle hover:text-on-dark"
+        className="mx-3 mb-4 flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-left text-sm text-body transition-colors hover:border-accent-periwinkle hover:text-on-dark"
       >
+        <GlobeIcon size={16} />
         {t("webs.navLink")}
       </Link>
     </aside>

@@ -3,13 +3,13 @@ import type { TranslationKey } from "./es";
 /** Diccionario inglés. Mismas claves que es.ts. */
 export const en: Record<TranslationKey, string> = {
   // Metadata (layout) — SEO
-  "meta.title": "Francast.ai — AI marketing for franchise consultants",
+  "meta.title": "BrandME.ai — AI marketing for franchise consultants",
   "meta.description":
     "BrandMe builds a full AI-powered page for every franchise brand in your portfolio: 100 SEO pages, a brand-smart AMA, and lead agents that never sleep. Live in 4 minutes.",
-  "meta.ogTitle": "Francast.ai — Launch every franchise brand with its own AI",
+  "meta.ogTitle": "BrandME.ai — Launch every franchise brand with its own AI",
   "meta.keywords":
-    "franchise marketing, franchise consultant, SEO pages, AMA, FDD, lead capture, BrandMe, Francast",
-  "meta.siteName": "Francast.ai",
+    "franchise marketing, franchise consultant, SEO pages, AMA, FDD, lead capture, BrandMe, BrandME",
+  "meta.siteName": "BrandME.ai",
 
   // Landing
   "landing.eyebrow": "Tell our agent your brands",
@@ -173,7 +173,7 @@ export const en: Record<TranslationKey, string> = {
   "leads.col.page": "Page",
   "leads.col.message": "Message",
   "leads.col.date": "Date",
-  "leads.navLink": "📩 Prospects",
+  "leads.navLink": "Prospects",
 
   // Home chat (full-screen conversational interface)
   "hc.greeting": "Which franchise brand do you want to launch today?",
@@ -181,6 +181,9 @@ export const en: Record<TranslationKey, string> = {
     "Tell me about your business and I'll build a full AI-powered page: SEO, AMA and lead capture.",
   "hc.placeholder": "Type here… (e.g. I want to launch Burger King in Dallas)",
   "hc.send": "Send",
+  "hc.stop": "Stop",
+  "hc.copy": "Copy",
+  "hc.remove": "Remove",
   "hc.hint": "Enter sends · Shift+Enter for a new line",
   "hc.mic": "Speak",
   "hc.recording": "Recording… (tap to stop)",
@@ -206,7 +209,7 @@ export const en: Record<TranslationKey, string> = {
   "cv.empty": "No conversations yet.",
   "cv.untitled": "Untitled",
 
-  // ── Long landing (Francast.ai) ───────────────────────────────────────────
+  // ── Long landing (BrandME.ai) ───────────────────────────────────────────
   // Nav
   "ll.nav.howItWorks": "How It Works",
   "ll.nav.gallery": "Gallery",
@@ -231,7 +234,7 @@ export const en: Record<TranslationKey, string> = {
   "ll.hero.check1": "30-day money-back guarantee",
   "ll.hero.check2": "No long-term contract",
   "ll.hero.check3": "Live in 4 minutes",
-  "ll.hero.terminalTitle": "FRANCAST.AI · INTAKE",
+  "ll.hero.terminalTitle": "BRANDME.AI · INTAKE",
   "ll.hero.viewPage": "View page →",
   "ll.hero.sample": "Sample build · Cycles through real BrandMe pages every 12 seconds",
 
@@ -265,11 +268,11 @@ export const en: Record<TranslationKey, string> = {
   "ll.gallery.count": "{n} live pages",
   // Public /webs page
   "webs.eyebrow": "Public gallery",
-  "webs.title": "Sites created with Francast.ai",
+  "webs.title": "Sites created with BrandME.ai",
   "webs.intro":
     "Each card is a real AI-generated marketing page, published live. Browse the ones that already exist or create your own.",
   "webs.cta": "Create mine →",
-  "webs.navLink": "🌐 Public gallery",
+  "webs.navLink": "Public gallery",
 
   // Comparison
   "ll.compare.old.eyebrow": "Today · The old way",
@@ -280,7 +283,7 @@ export const en: Record<TranslationKey, string> = {
   "ll.compare.old.4": "No SEO at the city level — invisible in local search",
   "ll.compare.old.5": "Leads die in the inbox while you're with another client",
   "ll.compare.old.6": "Can't ramp up: each new brand = another month of dev",
-  "ll.compare.new.eyebrow": "With BrandMe by Francast",
+  "ll.compare.new.eyebrow": "With BrandMe by BrandME",
   "ll.compare.new.title": "Every brand its own page. Every page its own AI.",
   "ll.compare.new.1": "One BrandMe page per brand, generated in 4 minutes",
   "ll.compare.new.2": "100 SEO city pages per brand, indexed for local search",
@@ -369,5 +372,5 @@ export const en: Record<TranslationKey, string> = {
   "ll.footer.contact": "Contact",
   "ll.footer.privacy": "Privacy",
   "ll.footer.terms": "Terms",
-  "ll.footer.rights": "© 2026 Francast.ai. All rights reserved.",
+  "ll.footer.rights": "© 2026 BrandME.ai. All rights reserved.",
 };

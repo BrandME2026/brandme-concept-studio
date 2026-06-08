@@ -87,15 +87,16 @@ export function useGeneration() {
       if (res.headers.get("content-type")?.includes("application/json")) {
         const json = await res.json().catch(() => null);
         if (json?.data?.duplicate && json.data.slug) {
-          const dup: Proposal = {
+          // NO seteamos `proposal` con un objeto vacío: dejaría gen.proposal truthy
+          // con proposal.proposal === null y el render reventaría en `.name`. El
+          // duplicado lo maneja el llamador (redirige al slug existente).
+          return {
             proposal: null as unknown as DesignProposal,
             designMd: "",
             html: "",
             slug: json.data.slug,
             duplicate: true,
           };
-          setProposal(dup);
-          return dup;
         }
         throw new Error(json?.error?.message ?? "No se pudo generar la propuesta");
       }

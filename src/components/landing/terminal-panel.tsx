@@ -30,7 +30,7 @@ export function TerminalPanel() {
       {/* Footer decorativo (mockup) */}
       <div className="flex items-center justify-between gap-2 border-t border-white/10 px-4 py-3">
         <span className="truncate font-mono text-[10px] text-body">
-          francast.ai/c/shawn/burger-king-dallas
+          brandme.ai/c/shawn/burger-king-dallas
         </span>
         <a
           href="#gallery"

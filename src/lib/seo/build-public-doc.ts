@@ -99,10 +99,10 @@ function floatingAgent(
 
 export function buildPublicDoc(html: string, meta: PublicDocMeta): string {
   const lang = meta.lang ?? "es";
-  const title = meta.metaTitle || meta.name || "Francast.ai";
+  const title = meta.metaTitle || meta.name || "BrandME.ai";
   const description =
     meta.metaDescription ||
-    (meta.brand ? `${meta.brand}${meta.city ? ` en ${meta.city}` : ""} — Francast.ai` : "Francast.ai");
+    (meta.brand ? `${meta.brand}${meta.city ? ` en ${meta.city}` : ""} — BrandME.ai` : "BrandME.ai");
   const canonical = meta.slug ? `${SITE_URL}/p/${meta.slug}` : SITE_URL;
   // og:image: el screenshot http si existe; si no, la OG dinámica del sitio (nunca data-URI:
   // Google/redes no las leen). Siempre hay imagen → mejor CTR en SERP y redes.

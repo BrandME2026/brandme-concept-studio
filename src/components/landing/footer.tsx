@@ -18,7 +18,7 @@ export function Footer() {
       <div className="mx-auto grid w-full max-w-[1280px] gap-10 md:grid-cols-[2fr_1fr_1fr]">
         <div className="flex flex-col gap-2">
           <span className="text-lg font-medium tracking-tight">
-            Franc<span className="text-accent-orange">ast</span>.ai
+            Brand<span className="text-accent-orange">ME</span>.ai
           </span>
           <p className="max-w-xs text-sm text-body">{t("ll.footer.tagline")}</p>
         </div>

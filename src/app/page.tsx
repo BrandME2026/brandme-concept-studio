@@ -6,7 +6,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "Francast.ai",
+  name: "BrandME.ai",
   url: SITE_URL,
   logo: `${SITE_URL}/opengraph-image`,
   description:

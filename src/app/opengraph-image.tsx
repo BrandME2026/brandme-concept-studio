@@ -1,11 +1,11 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Francast.ai — AI marketing for franchise consultants";
+export const alt = "BrandME.ai — AI marketing for franchise consultants";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-/** Imagen OG generada: wordmark Francast.ai sobre el gradiente de marca. */
+/** Imagen OG generada: wordmark BrandME.ai sobre el gradiente de marca. */
 export default function OgImage() {
   return new ImageResponse(
     (
@@ -23,7 +23,7 @@ export default function OgImage() {
         }}
       >
         <div style={{ fontSize: 40, fontWeight: 600, letterSpacing: "-1px" }}>
-          Francast.ai
+          BrandME.ai
         </div>
         <div
           style={{

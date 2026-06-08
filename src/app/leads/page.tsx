@@ -33,7 +33,7 @@ export default function LeadsPage() {
     <main className="flex flex-1 flex-col bg-canvas">
       <header className="flex items-center justify-between border-b border-hairline px-4 py-3">
         <Link href="/" className="eyebrow text-body hover:opacity-70">
-          ← Francast.ai
+          ← BrandME.ai
         </Link>
         <span className="text-sm font-semibold text-ink">{t("leads.title")}</span>
         <span className="w-16" />

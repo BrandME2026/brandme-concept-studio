@@ -1,13 +1,13 @@
 /** Diccionario español. Claves namespaced por área de la UI. */
 export const es = {
   // Metadata (layout) — SEO
-  "meta.title": "Francast.ai — Marketing con IA para consultores de franquicias",
+  "meta.title": "BrandME.ai — Marketing con IA para consultores de franquicias",
   "meta.description":
     "BrandMe construye una página completa con IA para cada marca de franquicia de tu portafolio: 100 páginas SEO, un AMA experto en la marca y agentes de captación que nunca duermen. En vivo en 4 minutos.",
-  "meta.ogTitle": "Francast.ai — Lanza cada marca de franquicia con su propia IA",
+  "meta.ogTitle": "BrandME.ai — Lanza cada marca de franquicia con su propia IA",
   "meta.keywords":
-    "marketing de franquicias, consultor de franquicias, páginas SEO, AMA, FDD, captación de leads, BrandMe, Francast",
-  "meta.siteName": "Francast.ai",
+    "marketing de franquicias, consultor de franquicias, páginas SEO, AMA, FDD, captación de leads, BrandMe, BrandME",
+  "meta.siteName": "BrandME.ai",
 
   // Landing
   "landing.eyebrow": "Cuéntale tus marcas a nuestro agente",
@@ -171,7 +171,7 @@ export const es = {
   "leads.col.page": "Página",
   "leads.col.message": "Mensaje",
   "leads.col.date": "Fecha",
-  "leads.navLink": "📩 Interesados",
+  "leads.navLink": "Interesados",
 
   // Home chat (interfaz conversacional full-screen)
   "hc.greeting": "¿Qué marca de franquicia quieres lanzar hoy?",
@@ -179,6 +179,9 @@ export const es = {
     "Cuéntame de tu negocio y te armo una página completa con IA: SEO, AMA y captación de leads.",
   "hc.placeholder": "Escribe aquí… (ej. quiero lanzar Burger King en Dallas)",
   "hc.send": "Enviar",
+  "hc.stop": "Detener",
+  "hc.copy": "Copiar",
+  "hc.remove": "Quitar",
   "hc.hint": "Enter envía · Shift+Enter salto de línea",
   "hc.mic": "Hablar",
   "hc.recording": "Grabando… (toca para parar)",
@@ -204,7 +207,7 @@ export const es = {
   "cv.empty": "Aún no hay conversaciones.",
   "cv.untitled": "Sin título",
 
-  // ── Landing larga (Francast.ai) ──────────────────────────────────────────
+  // ── Landing larga (BrandME.ai) ──────────────────────────────────────────
   // Nav
   "ll.nav.howItWorks": "Cómo funciona",
   "ll.nav.gallery": "Galería",
@@ -229,7 +232,7 @@ export const es = {
   "ll.hero.check1": "Garantía de devolución de 30 días",
   "ll.hero.check2": "Sin contrato a largo plazo",
   "ll.hero.check3": "En vivo en 4 minutos",
-  "ll.hero.terminalTitle": "FRANCAST.AI · INTAKE",
+  "ll.hero.terminalTitle": "BRANDME.AI · INTAKE",
   "ll.hero.viewPage": "Ver página →",
   "ll.hero.sample": "Build de muestra · Recorre páginas BrandMe reales cada 12 segundos",
 
@@ -263,11 +266,11 @@ export const es = {
   "ll.gallery.count": "{n} páginas en vivo",
   // Página pública /webs
   "webs.eyebrow": "Galería pública",
-  "webs.title": "Webs creadas con Francast.ai",
+  "webs.title": "Webs creadas con BrandME.ai",
   "webs.intro":
     "Cada tarjeta es una página de marketing real, generada por IA y publicada en vivo. Explora las que ya existen o crea la tuya.",
   "webs.cta": "Crear la mía →",
-  "webs.navLink": "🌐 Galería pública",
+  "webs.navLink": "Galería pública",
 
   // Comparativa
   "ll.compare.old.eyebrow": "Hoy · La forma antigua",
@@ -278,7 +281,7 @@ export const es = {
   "ll.compare.old.4": "Sin SEO a nivel de ciudad — invisible en búsquedas locales",
   "ll.compare.old.5": "Los leads mueren en la bandeja mientras atiendes a otro cliente",
   "ll.compare.old.6": "No puedes escalar: cada marca nueva = otro mes de desarrollo",
-  "ll.compare.new.eyebrow": "Con BrandMe by Francast",
+  "ll.compare.new.eyebrow": "Con BrandMe by BrandME",
   "ll.compare.new.title": "Cada marca con su página. Cada página con su propia IA.",
   "ll.compare.new.1": "Una página BrandMe por marca, generada en 4 minutos",
   "ll.compare.new.2": "100 páginas SEO de ciudad por marca, indexadas para búsqueda local",
@@ -367,7 +370,7 @@ export const es = {
   "ll.footer.contact": "Contacto",
   "ll.footer.privacy": "Privacidad",
   "ll.footer.terms": "Términos",
-  "ll.footer.rights": "© 2026 Francast.ai. Todos los derechos reservados.",
+  "ll.footer.rights": "© 2026 BrandME.ai. Todos los derechos reservados.",
 } as const;
 
 export type TranslationKey = keyof typeof es;

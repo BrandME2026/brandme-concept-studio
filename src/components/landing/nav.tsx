@@ -18,7 +18,7 @@ export function LandingNav() {
     <header className="sticky top-0 z-50 border-b border-hairline bg-canvas/90 backdrop-blur">
       <nav className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 px-6 py-3 md:px-8">
         <a href="#top" className="text-lg font-medium tracking-tight text-ink">
-          Franc<span className="text-accent-orange">ast</span>.ai
+          Brand<span className="text-accent-orange">ME</span>.ai
         </a>
 
         <div className="hidden items-center gap-6 md:flex">

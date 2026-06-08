@@ -36,7 +36,7 @@ const htmlResponse = (body: string, status = 200) =>
 
 const notFound = () =>
   htmlResponse(
-    `<!doctype html><html><head><meta charset="utf-8"><title>404</title></head><body style="font-family:sans-serif;padding:4rem;text-align:center"><h1>Página no encontrada</h1><p><a href="/">Volver a Francast.ai</a></p></body></html>`,
+    `<!doctype html><html><head><meta charset="utf-8"><title>404</title></head><body style="font-family:sans-serif;padding:4rem;text-align:center"><h1>Página no encontrada</h1><p><a href="/">Volver a BrandME.ai</a></p></body></html>`,
     404,
   );
 
