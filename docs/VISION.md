@@ -1,9 +1,12 @@
 # Visión — BrandMe v0.3 (SaaS de franquicias)
 
-> ⚠️ **Visión futura — NO implementada.** Este repo contiene **BrandMe Concept Studio**
-> (generador de webs por IA con captura de leads); nada de este documento describe el código
-> actual. No usar el stack de aquí (Neon, Clerk, Drizzle, Trigger.dev…) como referencia al
-> trabajar en el repo — para eso está [`CLAUDE.md`](../CLAUDE.md).
+> ⚠️ **Visión objetivo — parcialmente implementada.** Este repo contiene **BrandMe Concept Studio**
+> (generador de webs por IA con captura de leads), que es la **base** sobre la que se construye
+> BrandMe v0.3. El stack real ya tomó decisiones que difieren del spec original de Drive:
+> **Firebase Auth** (no Clerk), **Postgres en Railway con driver `pg`** (no Neon/Drizzle),
+> **OpenRouter** (no Anthropic directo). Las piezas aún pendientes (pgvector, R2, job runner,
+> Sentry/PostHog) están marcadas como "objetivo" en las tablas de abajo. Fuente de verdad del
+> producto deseado: 8090 Software Factory (`BrandMe_v0.3_production`), sincronizado con este repo.
 
 ---
 
@@ -45,11 +48,11 @@ Documentación fuente: ~68 documentos de requerimientos en
 |------|-----------|
 | Framework | Next.js 16 (App Router, `src/`, TypeScript) |
 | UI | Tailwind CSS v4 |
-| Base de datos | Postgres (**Neon**) + **pgvector** |
-| Storage | **R2** (Knowledge Vault, Deal Vault, assets) |
-| Hosting / CDN | Vercel + **Cloudflare** (CDN/WAF) |
-| Auth | **Clerk** (MFA para admins internos) |
-| Jobs / orquestación | **Trigger.dev** |
+| Base de datos | Postgres (**Railway** hoy; pgvector pendiente para RAG) |
+| Storage | Pendiente (objetivo: **R2** para Knowledge Vault, Deal Vault, assets) |
+| Hosting / CDN | **Railway** hoy (objetivo CDN/WAF: Cloudflare) |
+| Auth | **Firebase Auth** hoy (MFA admins pendiente) |
+| Jobs / orquestación | Pendiente (objetivo: job runner tipo **Trigger.dev**) — hoy síncrono |
 | Pagos | **Stripe** |
 | Email | **Resend** (plataforma) + Gmail OAuth (sync) |
 | SMS | **Twilio** (US-only, requiere A2P 10DLC) |

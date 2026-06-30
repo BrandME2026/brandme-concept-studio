@@ -33,15 +33,32 @@ const openrouter = createOpenRouter({
   },
 });
 
+// Prompt caching (requisito financiero del spec v0.3 / WO-1, AC-PF-016.6): el TTL
+// se setea SIEMPRE explícito, nunca el default del provider — Anthropic cambió el
+// default de 1h a 5min en marzo 2026 sin aviso, y depender del default es un riesgo
+// de costos. OpenRouter solo aplica cache_control en modelos Claude; en otros modelos
+// (p. ej. GPT-5.5 de generación) es inocuo. TTL configurable por env.
+//   - interactivo (chat, generación on-demand): 5m
+//   - batch/scheduled (agentes programados, cuando existan): 1h
+const CACHE_TTL_INTERACTIVE = (process.env.OPENROUTER_CACHE_TTL_INTERACTIVE ?? "5m") as "5m" | "1h";
+const CACHE_TTL_BATCH = (process.env.OPENROUTER_CACHE_TTL_BATCH ?? "1h") as "5m" | "1h";
+
 /**
  * Devuelve un modelo (con fallbacks automáticos de OpenRouter) para la calidad pedida.
  * El primario es el de la calidad; el resto del fallback se mantiene como respaldo.
+ *
+ * @param quality calidad del modelo (alta/rapido).
+ * @param mode modo de invocación que define el TTL de cache (default interactivo).
  */
-export function getDesignModel(quality: Quality = "alta") {
+export function getDesignModel(quality: Quality = "alta", mode: "interactive" | "batch" = "interactive") {
   const primary = QUALITY_MODELS[quality] ?? DEFAULT_MODEL;
   // OpenRouter limita el array `models` a 3 ítems. Primario + 2 fallbacks como máximo.
   const models = [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)].slice(0, 3);
-  return openrouter(primary, { extraBody: { models } });
+  const ttl = mode === "batch" ? CACHE_TTL_BATCH : CACHE_TTL_INTERACTIVE;
+  return openrouter(primary, {
+    extraBody: { models },
+    cache_control: { type: "ephemeral", ttl },
+  });
 }
 
 /** Modelo por defecto (alta calidad) para usos que no eligen calidad. */
@@ -68,6 +85,9 @@ const CHAT_FALLBACK = process.env.OPENROUTER_CHAT_FALLBACK ?? "anthropic/claude-
 /** Modelo económico para chat y resolución (no para la generación de la propuesta). */
 export const chatModel = openrouter(CHAT_MODEL, {
   extraBody: { models: [CHAT_MODEL, CHAT_FALLBACK] },
+  // TTL interactivo explícito: el system prompt del chat se repite en cada turno,
+  // así que el cache reduce el costo cuando el routing usa un modelo Claude.
+  cache_control: { type: "ephemeral", ttl: CACHE_TTL_INTERACTIVE },
 });
 
 export function assertOpenRouterConfigured() {
