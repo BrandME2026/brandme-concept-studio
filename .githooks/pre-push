@@ -1,0 +1,13 @@
+#!/bin/sh
+# Protege main: el flujo del equipo jamás pushea a main directamente
+# (se trabaja en development / ramas de feature; ver CLAUDE.md global).
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main)
+      echo "⛔ push directo a main bloqueado por .githooks/pre-push."
+      echo "   Usa development o una rama de feature + PR."
+      exit 1
+      ;;
+  esac
+done
+exit 0

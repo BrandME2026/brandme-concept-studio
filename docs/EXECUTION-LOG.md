@@ -184,3 +184,12 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 - **Suite final:** 173/173 Vitest + 21/21 e2e · lint 0 · tsc 0 · build verde · CI en verde en cada push.
 - **Todo pusheado a `origin/8080juniora`** · issues #1–#13 en el Project de GitHub · 10 ejecuciones documentadas en `.sw-factory/`.
 - **Nada más es ejecutable sin ti.** Los pendientes (revisión humana, runbook RLS pre-deploy, envs de Railway, Firebase, Cost Model, Sentry) están listados arriba y en los issues.
+
+---
+
+# 🔁 LOOP AUTÓNOMO FINAL (pedido: "en 8090 está todo, no preguntes") — 10:00 → 10:15
+
+- **WO-12 (Fase 2, Onboarding) → `blocked` en 8090** con análisis flaggeado: necesita Firebase (WO-5), Trigger.dev (Agent 01 async), vendor ZIP (Luis) y email infra. Los cimientos que consume ya están listos — al provisionar, es ejecutable de inmediato.
+- **Cost Model RECOMPUTADO con pricing live de OpenRouter** (banner del doc atendido): pass-through exacto del list price de Anthropic para Claude (tabla verificada componente a componente) → el proforma baseline sigue válido. Único delta: sin Batch API (−50% en agentes batch ≈ $1.50–2.50/consultor/mes) → decisión (a) híbrido Anthropic-directo para batch (recomendada; el AIModelProvider lo hace trivial) o (b) absorber. Análisis + SQL de seed listos en `docs/COST-MODEL-OPENROUTER.md`; comentario flaggeado en el doc de 8090. **Sign-off: Junior.**
+- **`.githooks/pre-push`** instalado (bloquea push directo a main; sugerencia pendiente de las reglas globales).
+- **El loop se detiene aquí:** no queda trabajo ejecutable sin acciones humanas (Firebase, Trigger.dev, revisiones, sign-offs). Todo el estado está en 8090 + GitHub + este log.
