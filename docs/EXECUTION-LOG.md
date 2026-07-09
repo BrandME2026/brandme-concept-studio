@@ -157,3 +157,30 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 - Next 16 depreca la convención `middleware` (→ `proxy`) — preexistente, migrar aparte.
 - El working tree tenía borrados locales previos a esta sesión (AGENTS.md, CLAUDE.md, DESIGN.md, README.md) y untracked del tooling (.agents/, .claude/, skills-lock.json) — NO se tocaron ni commitearon.
 - Despliegue a Railway: el runbook está en docs/BACKEND.md; NO se tocó producción esta noche (todo contra Docker local).
+
+---
+
+# ☀️ EXTENSIÓN MATUTINA (pedida por Junior: "continúa sin parar, deja todo listo") — 09:35 → 09:55
+
+## WO-11 — Sitemap Service + Crawler Policy ✅ in_review
+- **Duración:** ~20m · **Commit:** `6dc4d40` · **Review:** APPROVED · **GitHub:** issue #11
+- robots.txt con la política de AI crawlers EXACTA de REQ-PF-011 (allow 8 search bots incl. Bingbot; disallow 7 training bots) + inclusión síncrona del sitemap verificada e2e con el flujo REAL de publish. GSC/IndexNow → Build 6.
+
+## WO-40 — MCP Server & Public API ⛔ NO ejecutable en Build 1 (documentado)
+- El requirement lo fecha en **Build 11**; 4 de 5 MCP tools dependen de contacts/pipeline/research (Builds 7–8); keys/webhooks dependen del portal (Build 6) y Trigger.dev. **Comentario flaggeado en 8090** con la recomendación (mover a Phase 11 o re-scopear) — decisión de planning tuya. Issue #12 (`blocked-infra`).
+
+## WO-41 — Agent Skills & Platform Discoverability ✅ in_review
+- **Duración:** ~35m · **Commit:** `a77215d` · **Review:** APPROVED · **GitHub:** issue #13
+- Mecanismo por fase: `discoverability.platform_phase` (EP-07) → llms.txt renderiza el status sin deploy; sección Developer Access; `/.well-known/skills/` con gating fail-closed (nada del contenido pre-review de Shawn/Luis se sirve en closed_development); crawler access logging clasificado (REQ-SKL-001).
+- ⚠️ **Riesgo operacional anotado (review):** coordinar el flip a `friendly_beta` (Build 6) con el embebido del contenido real de los SKILL.md post-review — no activar la fase antes.
+
+---
+
+# 🏁 CIERRE TOTAL — Fase 1: 10 de 13 WOs ejecutados
+
+**Ejecutados (in_review):** WO-3, WO-7, WO-4, WO-6, WO-8, WO-9, WO-32, WO-34, WO-11, WO-41.
+**No ejecutables (documentados):** WO-5 y WO-10 (necesitan proyecto Firebase — infra tuya) · WO-40 (Build 11 según su propio requirement — planning tuyo).
+
+- **Suite final:** 173/173 Vitest + 21/21 e2e · lint 0 · tsc 0 · build verde · CI en verde en cada push.
+- **Todo pusheado a `origin/8080juniora`** · issues #1–#13 en el Project de GitHub · 10 ejecuciones documentadas en `.sw-factory/`.
+- **Nada más es ejecutable sin ti.** Los pendientes (revisión humana, runbook RLS pre-deploy, envs de Railway, Firebase, Cost Model, Sentry) están listados arriba y en los issues.
