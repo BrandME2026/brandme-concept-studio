@@ -254,3 +254,9 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 - Verificado: 294/294 Vitest (11+4 unit, 14+3 db nuevos) · 31/31 E2E (COV_TST_001 + COV_MBC_001 contra la página pública real) · lint/tsc cero · CI en curso
 - Origen: re-auditoría de la cola tras "continue" — ambos estaban en backlog "low" pero eran EJECUTABLES (consumen datos que los Agentes 02/04 ya producen; cero servicios externos). Lección repetida: el priority del board no es un blocker.
 - Review conjunta R1 encontró 3 hallazgos reales: RLS que permitía al tenant auto-aprobar su pending_review (BLOCKING — mismo patrón que el hallazgo de WO-15), URL_RE ciega a bit.ly/wa.me (MAJOR), y display:none que rompía el swipe móvil (MAJOR). Todos corregidos con tests de regresión. R2 APPROVED.
+
+## Smoke test E2E con transportes reales (iteración del loop, 2026-07-09 ~16:40)
+- `scripts/smoke-agent-pipeline.ts`: pipeline completo con scraper REAL + LLM REAL contra sitios de franquicias reales.
+- **Bug real encontrado y corregido**: el transporte del scraper jamás se había ejecutado (todos los tests usaban fakes) y `page.evaluate(fn)` fallaba bajo esbuild/tsx (`__name is not defined`). Fix + spec de regresión que ejercita el contexto exacto. Commit del fix pusheado.
+- **Nuevo insumo gated descubierto**: la cuenta de OpenRouter está SIN CRÉDITOS (~$0.004) — el pass LLM real no puede correr, y esto afecta TAMBIÉN al prototipo en producción. Recargar en https://openrouter.ai/settings/credits; con crédito, `npx tsx scripts/smoke-agent-pipeline.ts <url>` valida la cadena completa.
+- Verificado: scrape real multi-página de anytimefitness.com OK (38s, robots respetado, clasificación correcta).
