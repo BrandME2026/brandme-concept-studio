@@ -148,7 +148,7 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 
 - **Suite final:** 168/168 Vitest (23 archivos) + 17/17 e2e Playwright · lint 0 · tsc 0 · build verde.
 - **Tokens de subagentes (suma de lo reportado por el harness):** ~600k. Sesión principal: ver `/cost`.
-- **Commits locales en `8080juniora`: 10** (8 WOs + 2 docs). **SIN push** (pendiente de orden explícita).
+- **Push hecho (autorizado por Junior 2026-07-09 ~09:28):** `origin/8080juniora` con los 12 commits de la sesión. **Primer CI run: ✅ success en 1m27s** (run 29025607860) — el merge gate quedó validado en el runner real. Nota menor: las actions v4 corren forzadas en Node 24 (aviso de GitHub; bump de versions cuando toque).
 - **Qué sigue:** ver la lista "qué hace falta" en la conversación — push, revisión humana de los 8 WOs, runbook RLS en Railway ANTES de deployar, Firebase (WO-5/10), Cost Model.
 
 ### Notas / pendientes que NO bloquean
