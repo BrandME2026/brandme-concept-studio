@@ -8,7 +8,7 @@ import { isBlockedHost, assertSafeUrl } from "./ssrf-guard";
 const MAX_LOGO_BYTES = Number(process.env.MAX_LOGO_BYTES ?? 256 * 1024);
 
 /** Detecta el MIME por magic bytes (no confiar en Content-Type, puede venir spoofeado). */
-function sniffImageMime(buf: Buffer): string | null {
+export function sniffImageMime(buf: Buffer): string | null {
   if (buf.length < 12) return null;
   if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "image/png";
   if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
@@ -26,7 +26,7 @@ function sniffImageMime(buf: Buffer): string | null {
  * podría saltarse el guard SSRF apuntando a la red interna) y validando los magic
  * bytes (no el Content-Type, que puede ser falso). Devuelve null si algo no cuadra.
  */
-async function fetchImageDataUri(page: Page, url: string): Promise<string | undefined> {
+export async function fetchImageDataUri(page: Page, url: string): Promise<string | undefined> {
   await assertSafeUrl(url); // resuelve DNS, bloquea IPs internas
   const res = await page.request.get(url, { timeout: 8000, maxRedirects: 0 });
   // Un 3xx significa que la URL redirige: no lo seguimos (posible SSRF). Descartar.

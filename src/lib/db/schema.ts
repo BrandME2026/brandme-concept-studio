@@ -92,6 +92,73 @@ export const consultantSessions = pgTable(
   (t) => [index("idx_consultant_sessions_consultant").on(t.consultantId)],
 );
 
+/** Marca de franquicia (WO-13). Entidad de PLATAFORMA (sin RLS, como platform_config). */
+export const brands = pgTable(
+  "brands",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    url: text("url").notNull(),
+    host: text("host").notNull(),
+    name: text("name"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("idx_brands_host").on(t.host)],
+);
+
+/** Corrida del Agente 02 (WO-13): 1 fila por corrida; la más reciente completed es la activa. */
+export const brandExtractions = pgTable(
+  "brand_extractions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    brandId: uuid("brand_id")
+      .notNull()
+      .references(() => brands.id),
+    triggeredByConsultantId: uuid("triggered_by_consultant_id").references(() => consultants.id),
+    status: text("status").notNull().default("running"),
+    identityTokens: jsonb("identity_tokens"),
+    contentSignals: jsonb("content_signals"),
+    verticalCategory: text("vertical_category"),
+    verticalConfidence: text("vertical_confidence"),
+    verticalLowConfidenceGuess: text("vertical_low_confidence_guess"),
+    fddFinancialData: jsonb("fdd_financial_data"),
+    brandTestimonials: jsonb("brand_testimonials"),
+    brandAccolades: jsonb("brand_accolades"),
+    intakeProtocolCoverage: jsonb("intake_protocol_coverage"),
+    perFieldStatus: jsonb("per_field_status"),
+    degradationFlag: boolean("degradation_flag").notNull().default(false),
+    complianceVerifiedAt: timestamp("compliance_verified_at", { withTimezone: true }),
+    scrapeUrls: text("scrape_urls").array().notNull().default([]),
+    sameAsUrls: jsonb("same_as_urls"),
+    rawContent: jsonb("raw_content"),
+    failureClass: text("failure_class"),
+    extractedAt: timestamp("extracted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("idx_brand_extractions_brand").on(t.brandId, t.createdAt),
+    index("idx_brand_extractions_consultant").on(t.triggeredByConsultantId),
+  ],
+);
+
+/** Cola de admin para corridas degradadas/fallidas (WO-13); un ACTIVO por brand. */
+export const brandExtractionHealthRecords = pgTable("brand_extraction_health_records", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  brandExtractionId: uuid("brand_extraction_id")
+    .notNull()
+    .references(() => brandExtractions.id),
+  brandId: uuid("brand_id")
+    .notNull()
+    .references(() => brands.id),
+  failureClass: text("failure_class").notNull(),
+  affectedConsultantIds: uuid("affected_consultant_ids").array().notNull().default([]),
+  consultantOptionSelected: text("consultant_option_selected").notNull().default("none"),
+  urlAttempts: jsonb("url_attempts").notNull().default([]),
+  resolutionPath: text("resolution_path").notNull().default("none"),
+  priorityFlags: text("priority_flags").array().notNull().default([]),
+  degradedAt: timestamp("degraded_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+
 /** Config runtime EP-07 (WO-7). Tabla de plataforma SIN RLS; read path = ConfigStore. */
 export const platformConfig = pgTable(
   "platform_config",
