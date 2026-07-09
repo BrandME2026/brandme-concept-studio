@@ -199,3 +199,10 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 - `llm.pricing` SEMBRADO (migración 0010) con los rates verificados en vivo — la telemetría `llm_invocations` atribuye costos reales desde ya.
 - Banner del doc "Technology Stack & Cost Model" en 8090 actualizado (tracked suggestion pendiente de aceptar en la app): recompute ✅ + única decisión abierta = Batch API (recomendación: híbrido Anthropic-directo para agentes batch, decidir antes de Build 5).
 - `llm.daily_cost_cap_usd` sigue null (sin techo) hasta proforma firmada.
+
+## ✅ Cierre de revisión (Junior: "sí hazlo", 2026-07-09 ~10:30)
+
+- Los 10 WOs ejecutados pasaron de `in_review` → **`completed`** en 8090 con autorización explícita de Junior (evidencia por WO en `.sw-factory/` + reviews delegadas + CI verde).
+- Issues #1–#8, #11, #13 cerrados en GitHub; Project → `Done`.
+- **Fase 1 de 8090: CERRADA** (10 completed · WO-5/WO-10 blocked-infra · WO-40 → decisión de fase pendiente).
+- No ejecutable por el agente (sigue en tu cancha): aceptar la tracked suggestion del Cost Model en la app de 8090; provisionar Firebase/Trigger.dev; runbook RLS en Railway antes de deployar.
