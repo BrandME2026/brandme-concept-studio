@@ -41,21 +41,40 @@ export function middleware(req: NextRequest) {
     res = NextResponse.next();
   }
   const h = res.headers;
-  // HSTS: fuerza HTTPS en visitas futuras (Railway sirve por TLS).
-  h.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  // HSTS con preload (AC-SEC-002.2): fuerza HTTPS en visitas futuras.
+  h.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   h.set("X-Content-Type-Options", "nosniff");
   h.set("Referrer-Policy", "strict-origin-when-cross-origin");
   h.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+  // CSP de las páginas HTML de la app (WO-32, AC-SEC-002.1). Lista de fuentes
+  // APROBADA y documentada: 'unsafe-inline' es requerido por la hydration de
+  // Next y los estilos inline de Tailwind; los CDNs son los MISMOS ya aprobados
+  // para el contenido LLM de /p/[slug] — el preview del studio es un iframe
+  // srcdoc que HEREDA esta CSP, así que debe poder cargar esos CDNs. Cambios a
+  // esta lista rompen el spec e2e de headers (gate anti-drift, ADR-001).
+  const APP_CSP = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data: https:",
+    "connect-src 'self' https:",
+    "frame-src 'self'",
+  ].join("; ");
 
   const isEmbed = req.nextUrl.pathname.startsWith("/embed/");
   if (isEmbed) {
     // Permitir el embebido SOLO desde nuestro propio sitio (incl. el origen opaco del
     // sandbox de /p/, que se resuelve por la cadena de framing). No usamos el token
     // `https:` (dejaría que cualquier sitio HTTPS embeba el form → clickjacking/phishing).
-    h.set("Content-Security-Policy", "frame-ancestors 'self'");
+    h.set("Content-Security-Policy", `${APP_CSP}; frame-ancestors 'self'`);
   } else {
     // El resto de la app no debe embeberse en sitios de terceros (anti-clickjacking).
     h.set("X-Frame-Options", "SAMEORIGIN");
+    if (isDocument) {
+      h.set("Content-Security-Policy", APP_CSP);
+    }
   }
   return res;
 }

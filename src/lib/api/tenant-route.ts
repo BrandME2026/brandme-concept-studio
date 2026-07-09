@@ -3,6 +3,7 @@ import { TenantContextError } from "@/lib/db/tenant-context";
 import { requireConsultantId } from "@/lib/tenant";
 import { withObservabilityContext } from "@/lib/observability/observability";
 import { checkConsultantRateLimit, tooMany, type LimitName } from "@/lib/security/rate-limit";
+import { corsHeadersFor, isSameOrigin } from "@/lib/security/cors";
 
 /**
  * Wrapper de route handlers autenticados (WO-3, AC-PF-001.4): resuelve el
@@ -23,6 +24,18 @@ export function tenantRoute<Ctx = unknown>(
   opts: { limit?: LimitName } = {},
 ): (req: Request, ctx: Ctx) => Promise<Response> {
   return async (req, ctx) => {
+    // CORS (WO-32, AC-SEC-003.1): en endpoints autenticados, un origin cross
+    // fuera de la allowlist no recibe ni headers CORS ni datos — 403 ANTES de
+    // resolver identidad. Same-origin / sin Origin pasa directo.
+    let corsHeaders: Record<string, string> | null = null;
+    const origin = req.headers.get("origin");
+    if (origin && !isSameOrigin(req)) {
+      corsHeaders = await corsHeadersFor(origin);
+      if (!corsHeaders) {
+        return NextResponse.json({ error: "Origen no permitido" }, { status: 403 });
+      }
+    }
+
     let consultantId: string;
     try {
       consultantId = await requireConsultantId();
@@ -38,7 +51,7 @@ export function tenantRoute<Ctx = unknown>(
     }
     // Tags EP-04 automáticos (WO-8): todo captureError dentro del handler
     // hereda surface + consultant + role sin que el caller los setee.
-    return withObservabilityContext(
+    const response = await withObservabilityContext(
       {
         surface: new URL(req.url).pathname,
         consultant_id: consultantId,
@@ -46,5 +59,9 @@ export function tenantRoute<Ctx = unknown>(
       },
       () => handler(req, ctx, { consultantId }),
     );
+    if (corsHeaders) {
+      for (const [k, v] of Object.entries(corsHeaders)) response.headers.set(k, v);
+    }
+    return response;
   };
 }

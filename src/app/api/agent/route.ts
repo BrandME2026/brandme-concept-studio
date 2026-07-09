@@ -5,6 +5,7 @@ import { saveLead, slugExists } from "@/lib/db/leads";
 import { isDbConfigured } from "@/lib/db/client";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
+import { detectPromptInjection, injectionFallbackResponse } from "@/lib/security/prompt-injection-filter";
 import { captureError } from "@/lib/observability/observability";
 
 // Anti-payload-bomb: límites de la conversación (cada mensaje cuesta tokens reales).
@@ -69,6 +70,23 @@ export async function POST(req: Request) {
   if (messages.length > MAX_MESSAGES) return fail("TOO_MANY_MESSAGES", "Conversación demasiado larga", 400);
   if (messages.some((m) => msgChars(m) > MAX_MSG_CHARS))
     return fail("MSG_TOO_LONG", "Mensaje demasiado largo", 400);
+
+  // PromptInjectionFilter (WO-32, AC-SEC-011): gate síncrono ANTES del modelo.
+  const lastUserText = messages
+    .filter((m) => m.role === "user")
+    .map((m) => (m.parts ?? [])
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join(" "))
+    .at(-1) ?? "";
+  const injection = await detectPromptInjection(lastUserText, { surface: "agent" });
+  if (injection.detected) {
+    return injectionFallbackResponse(
+      language === "en"
+        ? "I'm here to help you with information about this franchise. What would you like to know?"
+        : "Estoy aquí para ayudarte con información sobre esta franquicia. ¿Qué te gustaría saber?",
+    );
+  }
 
   const modelMessages = await convertToModelMessages(messages);
 

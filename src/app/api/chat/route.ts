@@ -11,6 +11,7 @@ import { listAllGenerations } from "@/lib/db/history";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import type { DesignTokens } from "@/types/design";
 import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
+import { detectPromptInjection, injectionFallbackResponse } from "@/lib/security/prompt-injection-filter";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -89,6 +90,23 @@ export async function POST(req: Request) {
       { success: false, error: { code: "MSG_TOO_LONG", message: "Mensaje demasiado largo" } },
       { status: 400 },
     );
+  // PromptInjectionFilter (WO-32, AC-SEC-011): gate síncrono ANTES del modelo.
+  const lastUserText = messages
+    .filter((m) => m.role === "user")
+    .map((m) => (m.parts ?? [])
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join(" "))
+    .at(-1) ?? "";
+  const injection = await detectPromptInjection(lastUserText, { surface: "chat" });
+  if (injection.detected) {
+    return injectionFallbackResponse(
+      language === "en"
+        ? "I can't process that request. Tell me about your brand or ask for a design tweak."
+        : "No puedo procesar esa petición. Cuéntame de tu marca o pídeme un ajuste del diseño.",
+    );
+  }
+
   const modelMessages = await convertToModelMessages(messages);
 
   // Un solo chat unificado. System conversacional; si ya hay página (llegan tokens),

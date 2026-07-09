@@ -88,8 +88,22 @@ export function currentObservabilityTags(): ObservabilityTags {
 const EMAIL_RE = /[^\s@"',;()[\]]+@[^\s@"',;()[\]]+\.[a-z]{2,}/gi;
 const PHONE_RE = /\+?\d[\d\s().-]{6,}\d/g;
 
+// Patrones de credenciales (WO-32, AC-SEC-004.2): el wrapper es el enforcement
+// point — ningún secret sale hacia el backend de monitoreo. Cubre prefijos de
+// API keys conocidos (Stripe/OpenRouter/OpenAI/Firebase), signing secrets,
+// tokens Bearer y connection strings con credenciales.
+const SECRET_RES: RegExp[] = [
+  /\b(?:sk|pk|rk)[-_][A-Za-z0-9_-]{8,}\b/g, // sk-or-..., sk_test_..., pk_live_...
+  /\bwhsec_[A-Za-z0-9]{8,}\b/g,
+  /\bAIza[0-9A-Za-z_-]{20,}\b/g, // Firebase API keys
+  /\bBearer\s+[A-Za-z0-9._~+/=-]{12,}/gi,
+  /\bpostgres(?:ql)?:\/\/[^\s"']+/gi, // DSN con credenciales
+];
+
 export function scrubPii(text: string): string {
-  return text.replace(EMAIL_RE, "[email]").replace(PHONE_RE, "[tel]");
+  let out = text;
+  for (const re of SECRET_RES) out = out.replace(re, "[secret]");
+  return out.replace(EMAIL_RE, "[email]").replace(PHONE_RE, "[tel]");
 }
 
 // ── Alerta por tasa (AC-PF-008.3) ────────────────────────────────────────────

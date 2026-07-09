@@ -21,6 +21,7 @@ import { slugify } from "@/lib/seo/slug";
 import { buildWhatsAppLink, buildMailtoLink, buildPhoneLink } from "@/lib/seo/contact-links";
 import { compileTailwindForHtml } from "@/lib/seo/compile-css";
 import { checkRateLimit, clientKey, llmBudget, tooMany, budgetExceeded } from "@/lib/security/rate-limit";
+import { validateDataUrlImage } from "@/lib/security/file-upload-validator";
 import type { DesignTokens } from "@/types/design";
 import { captureError } from "@/lib/observability/observability";
 
@@ -83,6 +84,19 @@ const postHandler = tenantRoute(async (req, _ctx, { consultantId }) => {
 
   const tokens = parsed.data.tokens as unknown as DesignTokens;
   const { screenshot, brief, language, images, logo: userLogo, quality, seo } = parsed.data;
+
+  // FileUploadValidator (WO-32, AC-SEC-006.1/.2): magic bytes server-side —
+  // el MIME declarado del data URL jamás es el gate. Rechazo ANTES de gastar
+  // LLM y antes de que la imagen toque historial/almacenamiento.
+  for (const image of [screenshot, ...images, ...(userLogo ? [userLogo] : [])]) {
+    const validation = await validateDataUrlImage(image, "generate_images");
+    if (!validation.ok) {
+      return NextResponse.json(
+        { success: false, error: { code: "UPLOAD_INVALID", message: validation.error } },
+        { status: 400 },
+      );
+    }
+  }
 
   // Sesión para la columna de trazabilidad; tenantRoute garantiza la cookie.
   const sessionId = (await readSessionId())!;
