@@ -36,6 +36,7 @@ export const ROUTE_MANIFEST: RouteEntry[] = [
 
   // ── public-system (visitante anónimo; datos bajo withSystemContext) ──────
   { route: "api/agent", access: "public-system" },
+  { route: "api/discoverability/skills/[[...path]]", access: "public-system" }, // /.well-known/skills (rewrite)
   { route: "api/chat", access: "public-system" },
   { route: "api/gallery", access: "public-system" },
   { route: "api/gallery/[id]", access: "public-system" },
