@@ -31,7 +31,7 @@ export async function GET(req: Request, ctx: unknown) {
 // Captura de interesados desde una página pública. SIN sesión (el visitante es
 // anónimo): corre bajo withSystemContext y el lead se asigna al dueño del slug.
 const leadSchema = z.object({
-  slug: z.string().min(1).max(80),
+  slug: z.string().min(1).max(130), // compuesto "<consultant>/<brand>" en BrandMePages (WO-15)
   name: z.string().trim().min(1).max(120),
   phone: z.string().trim().max(40).optional().default(""),
   // email opcional, pero si viene debe tener formato válido (string vacío permitido).

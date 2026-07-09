@@ -44,6 +44,9 @@ export const ROUTE_MANIFEST: RouteEntry[] = [
   { route: "llms.txt", access: "public-system" },
   { route: "p/[slug]", access: "public-system" },
   { route: "p/[slug]/llms.txt", access: "public-system" },
+  { route: "[consultantSlug]/[brandSlug]", access: "public-system" }, // BrandMePage (WO-15): solo published
+  { route: "[consultantSlug]/[brandSlug]/llms.txt", access: "public-system" }, // 404 salvo published
+  { route: "preview/[token]", access: "public-system" }, // preview time-limited, noindex
   { route: "sitemap", access: "public-system" },
   { route: "webs", access: "public-system" }, // página server (galería)
 

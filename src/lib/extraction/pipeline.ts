@@ -1,6 +1,7 @@
 import type { AIModelProvider } from "@/lib/ai/model-provider";
 import { getConfigNumber } from "@/lib/config/config-store";
 import { withSystemContext } from "@/lib/db/tenant-context";
+import { emitDomainEvent } from "@/lib/events/domain-events";
 import { captureError, withObservabilityContext } from "@/lib/observability/observability";
 import { LlmExtractionError, runExtractionPass, AGENT_ID } from "./agent02-extractor";
 import { evaluateQuality } from "./quality-gate";
@@ -177,6 +178,10 @@ async function finishFromScrape(input: {
         await resolveHealthRecord(brandId, input.resolutionPath ?? "url_retry");
       }
     });
+    // AC-BPG-001.1: la generación de página se engancha aquí. Se emite también
+    // en degradación (ADR-003 de BrandMePage: la página degradada usa el
+    // template neutral y sigue siendo claimable).
+    emitDomainEvent("brand_extraction.completed", { brandId, consultantId, extractionId });
     return {
       extractionId,
       brandId,

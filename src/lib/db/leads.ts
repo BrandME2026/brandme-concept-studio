@@ -41,9 +41,22 @@ export async function saveLead(input: LeadInput): Promise<{ id: string }> {
     `SELECT consultant_id FROM generations WHERE slug = $1 LIMIT 1`,
     [input.slug],
   );
-  const consultantId = owner.rows[0]?.consultant_id;
+  let consultantId = owner.rows[0]?.consultant_id;
   if (!consultantId) {
-    throw new Error(`saveLead: el slug "${input.slug}" no tiene generación dueña`);
+    // BrandMePages (WO-15): slug compuesto "<consultant>/<brand>"; el dueño es
+    // el consultant de la página PUBLICADA (mismo criterio que slugExists).
+    const slash = input.slug.indexOf("/");
+    if (slash > 0) {
+      const bmp = await db().query<{ consultant_id: string }>(
+        `SELECT consultant_id FROM brandme_pages
+         WHERE consultant_slug = $1 AND brand_slug = $2 AND state = 'published' LIMIT 1`,
+        [input.slug.slice(0, slash), input.slug.slice(slash + 1)],
+      );
+      consultantId = bmp.rows[0]?.consultant_id;
+    }
+  }
+  if (!consultantId) {
+    throw new Error(`saveLead: el slug "${input.slug}" no tiene página dueña`);
   }
   // Sin RETURNING: la fila nueva no es VISIBLE bajo system scope (no hay
   // system_select en leads, a propósito — mínima superficie) y RETURNING
@@ -84,5 +97,15 @@ export async function listLeadsForConsultant(limit = 200): Promise<LeadRecord[]>
 /** Comprueba que un slug existe (validación pública; usar bajo withSystemContext). */
 export async function slugExists(slug: string): Promise<boolean> {
   const { rows } = await db().query(`SELECT 1 FROM generations WHERE slug = $1 LIMIT 1`, [slug]);
-  return rows.length > 0;
+  if (rows.length > 0) return true;
+  // BrandMePages (WO-15, AC-BPG-001.4): el lead llega con el slug compuesto
+  // "<consultant>/<brand>" y solo cuenta si la página está PUBLICADA.
+  const slash = slug.indexOf("/");
+  if (slash <= 0) return false;
+  const bmp = await db().query(
+    `SELECT 1 FROM brandme_pages
+     WHERE consultant_slug = $1 AND brand_slug = $2 AND state = 'published' LIMIT 1`,
+    [slug.slice(0, slash), slug.slice(slash + 1)],
+  );
+  return bmp.rows.length > 0;
 }

@@ -58,6 +58,7 @@ export const consultants = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     firebaseUid: text("firebase_uid").references(() => users.id),
     accountState: text("account_state").notNull().default("active"),
+    slug: text("slug"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -157,6 +158,101 @@ export const brandExtractionHealthRecords = pgTable("brand_extraction_health_rec
   priorityFlags: text("priority_flags").array().notNull().default([]),
   degradedAt: timestamp("degraded_at", { withTimezone: true }).notNull().defaultNow(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+
+/** Config inmutable por corrida de generación del Agente 04 (WO-15). */
+export const brandmePageConfigs = pgTable(
+  "brandme_page_configs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    brandId: uuid("brand_id")
+      .notNull()
+      .references(() => brands.id),
+    consultantId: uuid("consultant_id")
+      .notNull()
+      .references(() => consultants.id),
+    source: text("source").notNull().default("agent04_dynamic"),
+    brandTemplateId: uuid("brand_template_id"),
+    identityTokens: jsonb("identity_tokens").notNull(),
+    contentSignals: jsonb("content_signals").notNull(),
+    generatedCopy: jsonb("generated_copy").notNull(),
+    fddFinancialData: jsonb("fdd_financial_data"),
+    sameAsUrls: jsonb("same_as_urls"),
+    complianceVerifiedAt: timestamp("compliance_verified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_bpc_pair").on(t.consultantId, t.brandId, t.createdAt)],
+);
+
+/** Página por par consultant-brand (WO-15); state SOLO vía ApprovalGateway/ReRenderScheduler. */
+export const brandmePages = pgTable(
+  "brandme_pages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    consultantId: uuid("consultant_id")
+      .notNull()
+      .references(() => consultants.id),
+    brandId: uuid("brand_id")
+      .notNull()
+      .references(() => brands.id),
+    consultantSlug: text("consultant_slug").notNull(),
+    brandSlug: text("brand_slug").notNull(),
+    state: text("state").notNull().default("draft"),
+    configId: uuid("config_id").references(() => brandmePageConfigs.id),
+    generatedAt: timestamp("generated_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("idx_bmp_pair").on(t.consultantId, t.brandId),
+    uniqueIndex("idx_bmp_slugs").on(t.consultantSlug, t.brandSlug),
+    index("idx_bmp_state").on(t.state),
+  ],
+);
+
+/** Overrides de contenido por campo, versionados (WO-15, REQ-BPG-014). */
+export const consultantContentOverrides = pgTable("consultant_content_overrides", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  brandmepageId: uuid("brandmepage_id")
+    .notNull()
+    .references(() => brandmePages.id, { onDelete: "cascade" }),
+  consultantId: uuid("consultant_id")
+    .notNull()
+    .references(() => consultants.id),
+  fieldKey: text("field_key").notNull(),
+  currentValue: text("current_value").notNull(),
+  originalAgentValue: text("original_agent_value").notNull(),
+  version: integer("version").notNull().default(1),
+  status: text("status").notNull().default("live"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Template admin versionado por brand (WO-15, REQ-BPG-007); a lo sumo 1 activo. */
+export const brandTemplates = pgTable("brand_templates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  brandId: uuid("brand_id")
+    .notNull()
+    .references(() => brands.id),
+  version: integer("version").notNull().default(1),
+  isActive: boolean("is_active").notNull().default(false),
+  identityTokens: jsonb("identity_tokens").notNull(),
+  contentSignals: jsonb("content_signals").notNull(),
+  authoredBy: uuid("authored_by"),
+  activatedAt: timestamp("activated_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Preview links con expiración de 14 días (WO-15, REQ-BPG-011). */
+export const previewLinks = pgTable("preview_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  brandmepageId: uuid("brandmepage_id")
+    .notNull()
+    .references(() => brandmePages.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** Config runtime EP-07 (WO-7). Tabla de plataforma SIN RLS; read path = ConfigStore. */

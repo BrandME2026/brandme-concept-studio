@@ -32,7 +32,12 @@ function discoverEndpoints(): string[] {
 }
 
 /** Páginas server que tocan la capa db (se mantienen a mano; el grep del review las audita). */
-const DB_PAGES = ["c/[conversationId]", "webs"];
+const DB_PAGES = [
+  "c/[conversationId]",
+  "webs",
+  "[consultantSlug]/[brandSlug]", // BrandMePage pública (WO-15)
+  "preview/[token]", // preview time-limited (WO-15)
+];
 
 describe("registro de endpoints (manifiesto de aislamiento)", () => {
   it("todo endpoint descubierto está clasificado en ROUTE_MANIFEST (reporta por nombre)", () => {

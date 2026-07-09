@@ -35,6 +35,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     } catch {
       // Sin DB o fallo: solo la home. El sitemap nunca rompe el build.
     }
+
+    try {
+      // BrandMePages publicadas (WO-15): el ApprovalGateway "notifica" al
+      // sitemap por construcción — este query dinámico las incluye al publicar
+      // y las saca al archivar.
+      const { db } = await import("@/lib/db/tenant-context");
+      const bmp = await withSystemContext("sitemap", () =>
+        db().query<{ consultant_slug: string; brand_slug: string; published_at: Date | null }>(
+          `SELECT consultant_slug, brand_slug, published_at
+           FROM brandme_pages WHERE state = 'published' LIMIT 500`,
+        ),
+      );
+      for (const page of bmp.rows) {
+        entries.push({
+          url: `${SITE_URL}/${page.consultant_slug}/${page.brand_slug}`,
+          ...(page.published_at ? { lastModified: page.published_at } : {}),
+          changeFrequency: "weekly",
+          priority: 0.8,
+        });
+      }
+    } catch {
+      // Idem: el sitemap nunca rompe.
+    }
   }
 
   return entries;
