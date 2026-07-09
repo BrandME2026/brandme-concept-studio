@@ -10,6 +10,7 @@
  */
 
 import { getConfigNumber } from "@/lib/config/config-store";
+import { emitOpsAlert } from "@/lib/observability/observability";
 
 // ── Rate-limit por clave (ventana fija en memoria) ──────────────────────────
 interface Bucket {
@@ -29,6 +30,7 @@ function sweep(now: number) {
 export interface RateResult {
   ok: boolean;
   retryAfter: number; // segundos hasta poder reintentar
+  count: number; // peticiones acumuladas en la ventana (para la alerta de breach)
 }
 
 /** Cuenta una petición para `key`. Devuelve ok=false si supera `max` en `windowMs`. */
@@ -41,13 +43,13 @@ export function rateLimit(
   const b = buckets.get(key);
   if (!b || b.resetAt <= now) {
     buckets.set(key, { count: 1, resetAt: now + opts.windowMs });
-    return { ok: true, retryAfter: 0 };
+    return { ok: true, retryAfter: 0, count: 1 };
   }
   b.count += 1;
   if (b.count > opts.max) {
-    return { ok: false, retryAfter: Math.ceil((b.resetAt - now) / 1000) };
+    return { ok: false, retryAfter: Math.ceil((b.resetAt - now) / 1000), count: b.count };
   }
-  return { ok: true, retryAfter: 0 };
+  return { ok: true, retryAfter: 0, count: b.count };
 }
 
 /**
@@ -152,8 +154,44 @@ const LIMIT_DEFAULTS: Record<LimitName, number> = {
 
 const WINDOW_MS = 60_000;
 
-/** Rate-limit por clave con el cap EP-07 del endpoint (ConfigStore, <60s liveness). */
+/** Alerta de breach (AC-PF-019.4): surface + requester + count, en CADA breach.
+ *  El ruido bajo ataque se acepta (contrato literal del blueprint); dedupea el sink. */
+function alertBreach(name: LimitName, requester: string, count: number): void {
+  emitOpsAlert({
+    surface: name,
+    count,
+    windowMs: WINDOW_MS,
+    message: `Rate limit "${name}" excedido por ${requester}: ${count} peticiones en 60s`,
+  });
+}
+
+/**
+ * Rate-limit por clave (dimensión IP / pre-auth) con el cap EP-07 del endpoint
+ * (ConfigStore, <60s liveness). Corre en la ENTRADA de la ruta, antes de
+ * cualquier lógica — incluso antes de resolver el tenant.
+ */
 export async function checkRateLimit(name: LimitName, key: string): Promise<RateResult> {
   const max = await getConfigNumber("rate_limiting", `${name}_per_min`, LIMIT_DEFAULTS[name]);
-  return rateLimit(key, { windowMs: WINDOW_MS, max });
+  const result = rateLimit(key, { windowMs: WINDOW_MS, max });
+  if (!result.ok) alertBreach(name, key, result.count);
+  return result;
+}
+
+/**
+ * Dimensión consultant_id (AC-PF-019.5): aplica SIMULTÁNEAMENTE con la de IP —
+ * la de IP corre en la entrada de la ruta y esta corre en tenantRoute tras
+ * resolver la identidad (así ninguna dimensión se cuenta dos veces). Mismo cap
+ * EP-07 por surface. La primera dimensión alcanzada dispara el 429.
+ */
+export async function checkConsultantRateLimit(
+  name: LimitName,
+  consultantId: string,
+): Promise<RateResult> {
+  const max = await getConfigNumber("rate_limiting", `${name}_per_min`, LIMIT_DEFAULTS[name]);
+  const result = rateLimit(`${name}:consultant:${consultantId}`, {
+    windowMs: WINDOW_MS,
+    max,
+  });
+  if (!result.ok) alertBreach(name, `consultant:${consultantId}`, result.count);
+  return result;
 }

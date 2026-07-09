@@ -131,6 +131,19 @@ async function checkRateAlert(surface: string): Promise<void> {
   }
 }
 
+/**
+ * Alerta operacional directa al canal de alertas (p.ej. breach de rate limit,
+ * AC-PF-019.4). A diferencia de la alerta por tasa de captureError, aquí el
+ * CALLER decide cuándo alertar; el destino sigue siendo el sink único.
+ */
+export function emitOpsAlert(alert: RateAlert): void {
+  try {
+    sink.alert(alert);
+  } catch (sinkErr) {
+    console.error("[observability] sink de alertas falló", sinkErr);
+  }
+}
+
 /** Solo tests. */
 export function __resetObservabilityForTests(): void {
   buckets.clear();

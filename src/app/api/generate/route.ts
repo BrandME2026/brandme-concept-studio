@@ -256,7 +256,7 @@ const postHandler = tenantRoute(async (req, _ctx, { consultantId }) => {
       "Cache-Control": "no-cache",
     },
   });
-});
+}, { limit: "generate" });
 
 export async function POST(req: Request, ctx: unknown) {
   // Anti-abuso: rate-limit por IP + tope diario global (operación CARA: GPT-5.5/Sonnet).

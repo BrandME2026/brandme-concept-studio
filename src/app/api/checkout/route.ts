@@ -81,7 +81,7 @@ const postHandler = tenantRoute(async (request, _ctx, { consultantId }) => {
     captureError(err, "[checkout] fallo creando sesión");
     return fail("CHECKOUT_FAILED", "No se pudo iniciar el pago", 500);
   }
-});
+}, { limit: "checkout" });
 
 export async function POST(request: Request, ctx: unknown) {
   const rl = await checkRateLimit("checkout", `checkout:${clientKey(request)}`);
