@@ -206,3 +206,17 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 - Issues #1–#8, #11, #13 cerrados en GitHub; Project → `Done`.
 - **Fase 1 de 8090: CERRADA** (10 completed · WO-5/WO-10 blocked-infra · WO-40 → decisión de fase pendiente).
 - No ejecutable por el agente (sigue en tu cancha): aceptar la tracked suggestion del Cost Model en la app de 8090; provisionar Firebase/Trigger.dev; runbook RLS en Railway antes de deployar.
+
+## WO-5 — Firebase Auth Adapter + Account State Machine
+- Inicio: 2026-07-09 10:31 · Fin: 2026-07-09 12:40 · Duración: ~2h09m (incl. 2 rondas de review)
+- Tokens subagentes: 110,776 exactos (reviewer ×2 rondas) · Sesión principal: ver /cost
+- Estado: **completed** en 8090 (autorización vigente del usuario) · Commit: `265ba68` feat(auth) · Issue #14 cerrado
+- Verificado: 185/185 Vitest (12 nuevos account-state) · 25/25 E2E (2 nuevos COV_PF_AUTH_002 + regresión completa) · lint/tsc cero · CI del push en curso
+- **El blocker era falso**: `.env.local` (gitignored, nunca inspeccionado) tenía el proyecto Firebase real `brandme-5551f` con Email/Password habilitado. El E2E crea un usuario REAL desechable (identitytoolkit REST), obtiene token firmado por Google y pasa por la verificación JWKS de producción — cero mocks en el path de auth.
+- Entregado: `account_state` con single-writer a nivel BD (trigger + set_config atómico en FROM, patrón CAS), `onboarding_sessions` write-once + RLS, gating ACCOUNT_PENDING (tenantRoute + página /c — hallazgo MAJOR de review R1 corregido y cubierto por E2E), señales Stripe por status resultante, frontera ESLint de firebase/auth.
+- Gap documentado: routing del password-set por WebhookHandlerPrimitive espera un sender (GCIP blocking functions, requiere Blaze) — la señal real hoy es el link verificado. MFA de admins → Build 6 (Admin Console).
+
+## Auditoría de accesos (petición "termines todo", 2026-07-09)
+- Firebase `brandme-5551f`: ✅ client-level (API key en .env.local) → WO-5 ejecutado. ❌ admin-level: ninguna credencial local es miembro del proyecto → **WO-10 sigue blocked** con desbloqueo concreto comentado en 8090 (agregar rojasjuniore@gmail.com como Editor, o re-auth de tech@niiopay.com).
+- Railway: CLI autenticado (yunior0000@gmail.com) pero el proyecto BrandME **no está en esa cuenta** y no hay DATABASE_URL de prod en la máquina → runbook RLS 100% gated en el usuario (además: migrar sin cutover ROMPERÍA las escrituras del código viejo por el NOT NULL de consultant_id — va acoplado al deploy, ventana de mantenimiento).
+- Trigger.dev: sin cuenta/token → WO-12 sigue blocked.
