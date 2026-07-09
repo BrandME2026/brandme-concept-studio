@@ -220,3 +220,12 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 - Firebase `brandme-5551f`: ✅ client-level (API key en .env.local) → WO-5 ejecutado. ❌ admin-level: ninguna credencial local es miembro del proyecto → **WO-10 sigue blocked** con desbloqueo concreto comentado en 8090 (agregar rojasjuniore@gmail.com como Editor, o re-auth de tech@niiopay.com).
 - Railway: CLI autenticado (yunior0000@gmail.com) pero el proyecto BrandME **no está en esa cuenta** y no hay DATABASE_URL de prod en la máquina → runbook RLS 100% gated en el usuario (además: migrar sin cutover ROMPERÍA las escrituras del código viejo por el NOT NULL de consultant_id — va acoplado al deploy, ventana de mantenimiento).
 - Trigger.dev: sin cuenta/token → WO-12 sigue blocked.
+
+## WO-13 — Brand Extraction (Agente 02)
+- Inicio: 2026-07-09 12:27 · Fin: 2026-07-09 13:10 · Duración: ~43m (incl. 2 rondas de review)
+- Tokens subagentes: 209,536 exactos (explorer 46,444 + reviewer 78,094 + 84,998) · Sesión principal: ver /cost
+- Estado: **completed** en 8090 · Commit: `d0700f6` feat(extraction) · Issue #15 cerrado
+- Verificado: 220/220 Vitest (23 unit + 12 db nuevos) · 25/25 E2E (COV_BEX_001.1/.2 nuevos) · lint/tsc cero · CI en curso
+- Entregado: pipeline completo scrape→LLM→gate como librería (`src/lib/extraction/`, separado del extractor visual): crawl priorizado multi-página, 4 clases de fallo + backup URL + robots respetado, pass LLM único (ADR-002) con retries sobre el mismo contenido (ADR-004), quality gate <3/5 señales, health records (1 activo por brand), limiter FIFO 1-50, compliance verbatim, 3 tablas con RLS + 9 tunables ConfigStore.
+- Review R1 encontró 2 hallazgos REALES: SSRF en el fetch de robots.txt (BLOCKING, corregido + test de regresión con 169.254.169.254) y doble invocación LLM en timeout (corregido: timeout terminal). R2 APPROVED.
+- Drift flaggeado en 8090 (comentario en WO-13): Firecrawl sin API key (ScrapeProvider como frontera), raw content en Postgres (WO-10 blocked), PostHog ausente. Sin superficie HTTP: triggers llegan con WO-12 (Stage 1) y Build 6 (admin) — criterio WO-4.
