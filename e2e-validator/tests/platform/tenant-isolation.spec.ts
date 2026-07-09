@@ -70,6 +70,13 @@ async function provisionTenant(baseURL: string, label: string): Promise<Tenant> 
        VALUES ($1, $2, $3, 'e2e@x.com', 'form')`,
       [slug, consultantId, leadName],
     );
+    // Suscripción activa: el server e2e corre con Stripe configurado (paywall
+    // activo por COV_PF_WEBHOOK_001) y el flujo de publish exige suscripción.
+    await c.query(
+      `INSERT INTO subscriptions (session_id, consultant_id, stripe_customer_id, status)
+       VALUES ($1, $2, $3, 'active')`,
+      [sessionId, consultantId, `cus_e2e_${slug}`],
+    );
     return { consultantId, generationId: gen.rows[0].id };
   });
 

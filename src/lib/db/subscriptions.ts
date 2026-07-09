@@ -59,10 +59,14 @@ export async function upsertCustomer(input: {
   );
 }
 
+export type ApplySubscriptionResult = "applied" | "customer_not_found" | "stale_event";
+
 /**
  * Sincroniza el estado de la suscripción desde un evento de Stripe (webhook;
- * usar bajo withSystemContext). Resuelve por customer. Idempotente: descarta el
- * evento si su `current_period_end` es anterior al guardado (fuera de orden).
+ * usar bajo withSystemContext). Resuelve por customer. El resultado DISTINGUE
+ * los dos no-ops (WO-6, hallazgo de review): "customer_not_found" debe
+ * reintentar (cubre la carrera checkout→webhook), "stale_event" es el descarte
+ * idempotente por diseño de eventos fuera de orden — jamás debe reintentar.
  */
 export async function applySubscriptionEvent(input: {
   customerId: string;
@@ -70,9 +74,15 @@ export async function applySubscriptionEvent(input: {
   status: string;
   currentPeriodEnd: Date | null;
   email?: string | null;
-}): Promise<void> {
+}): Promise<ApplySubscriptionResult> {
+  const existing = await db().query(
+    `SELECT 1 FROM subscriptions WHERE stripe_customer_id = $1`,
+    [input.customerId],
+  );
+  if (existing.rows.length === 0) return "customer_not_found";
+
   const periodEnd = input.currentPeriodEnd ? input.currentPeriodEnd.toISOString() : null;
-  await db().query(
+  const updated = await db().query(
     `UPDATE subscriptions
        SET stripe_subscription_id = $2,
            status = $3,
@@ -85,6 +95,7 @@ export async function applySubscriptionEvent(input: {
             OR $4::timestamptz >= current_period_end)`,
     [input.customerId, input.subscriptionId, input.status, periodEnd, input.email ?? null],
   );
+  return (updated.rowCount ?? 0) > 0 ? "applied" : "stale_event";
 }
 
 /** true si el tenant del contexto tiene ALGUNA suscripción activa. */

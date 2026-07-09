@@ -161,7 +161,7 @@ describe("subscriptions", () => {
   });
 
   it("applySubscriptionEvent (webhook, system) actualiza por customer sin contexto de tenant", async () => {
-    await withSystemContext("test-webhook", () =>
+    const result = await withSystemContext("test-webhook", () =>
       applySubscriptionEvent({
         customerId: `cus_${seedB.slug}`,
         subscriptionId: "sub_123",
@@ -169,10 +169,44 @@ describe("subscriptions", () => {
         currentPeriodEnd: null,
       }),
     );
+    expect(result).toBe("applied");
     const subB = await withTenant(B.consultantId, () => getSubscriptionForTenant());
     expect(subB?.status).toBe("canceled");
     const subA = await withTenant(A.consultantId, () => getSubscriptionForTenant());
     expect(subA?.status).toBe("active");
+  });
+
+  it("applySubscriptionEvent distingue customer desconocido de evento stale (WO-6)", async () => {
+    const notFound = await withSystemContext("test-webhook", () =>
+      applySubscriptionEvent({
+        customerId: "cus_inexistente",
+        subscriptionId: "sub_x",
+        status: "active",
+        currentPeriodEnd: null,
+      }),
+    );
+    expect(notFound).toBe("customer_not_found");
+
+    // Sembrar un period_end futuro y mandar un evento MÁS VIEJO → stale.
+    await withSystemContext("test-webhook", () =>
+      applySubscriptionEvent({
+        customerId: `cus_${seedA.slug}`,
+        subscriptionId: "sub_a",
+        status: "active",
+        currentPeriodEnd: new Date(Date.now() + 30 * 86_400_000),
+      }),
+    );
+    const stale = await withSystemContext("test-webhook", () =>
+      applySubscriptionEvent({
+        customerId: `cus_${seedA.slug}`,
+        subscriptionId: "sub_a",
+        status: "canceled",
+        currentPeriodEnd: new Date(Date.now() + 1 * 86_400_000), // anterior al guardado
+      }),
+    );
+    expect(stale).toBe("stale_event");
+    const subA = await withTenant(A.consultantId, () => getSubscriptionForTenant());
+    expect(subA?.status, "el evento stale no debe aplicar").toBe("active");
   });
 });
 

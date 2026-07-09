@@ -114,6 +114,22 @@ export const llmInvocations = pgTable(
   (t) => [index("idx_llm_invocations_created").on(t.createdAt.desc())],
 );
 
+/** Dedup de webhooks entrantes (WO-6, EP-02). Plataforma, SIN RLS; purga TTL oportunista. */
+export const webhookEvents = pgTable(
+  "webhook_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    vendor: text("vendor").notNull(),
+    eventId: text("event_id").notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("idx_webhook_events_vendor_event").on(t.vendor, t.eventId),
+    index("idx_webhook_events_expires").on(t.expiresAt),
+  ],
+);
+
 // ── Tablas tenant-scoped (RLS + FORCE) ───────────────────────────────────────
 
 export const conversations = pgTable(

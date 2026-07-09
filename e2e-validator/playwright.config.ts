@@ -34,6 +34,13 @@ export default defineConfig({
       // TTL corto SOLO para e2e: permite probar la liveness (<60s, REQ-PF-020.3)
       // sin esperar el TTL de producción. El contrato de 60s es el default real.
       CONFIG_CACHE_TTL_MS: "2000",
+      // Stripe dummy para COV_PF_WEBHOOK_001: la firma se verifica con crypto
+      // LOCAL (constructEvent), jamás se llama a la API de Stripe. Con esto el
+      // paywall queda ACTIVO en el server e2e — los tenants del spec de
+      // aislamiento se siembran con suscripción activa.
+      STRIPE_SECRET_KEY: "sk_test_dummy_e2e",
+      STRIPE_PRICE_ID: "price_e2e_dummy", // isStripeConfigured exige secret + price
+      STRIPE_WEBHOOK_SECRET: "whsec_e2e_dummy",
     },
   },
 });
