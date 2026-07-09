@@ -41,7 +41,13 @@ export class LocalScrapeProvider implements ScrapeProvider {
       }
       await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
 
-      const raw = await page.evaluate(scrapeFromDom);
+      // Inyección por STRING con el helper __name definido: esbuild/tsx
+      // (keepNames) reescribe la función con llamadas a __name que no existen
+      // en el contexto del navegador — descubierto por el smoke test real
+      // (page.evaluate(fn) fallaba bajo tsx; bajo Next/SWC pasaba).
+      const raw = (await page.evaluate(
+        `(() => { const __name = (fn) => fn; return (${scrapeFromDom.toString()})(); })()`,
+      )) as ReturnType<typeof scrapeFromDom>;
 
       // Logo best-effort (AC-BEX-002.5): jamás falla el scrape por el logo.
       let logoCandidate: ScrapedPage["logoCandidate"] = null;
