@@ -181,7 +181,9 @@ describe("telemetría LLMInvocation (AC-PF-016.3 / COV_PF_LLM_016.3)", () => {
       ),
     );
     expect(cw[0].cache_write_tokens).toBe(15);
-    expect(rows[0].cost).toBe(0); // sin pricing configurado (Cost Model pendiente)
+    // Pricing sembrado (0010, verificado vs OpenRouter live): sonnet 4.6 =
+    // 120/1M*3 + 45/1M*15 + 30/1M*0.30 + 15/1M*3.75 = 0.00110025
+    expect(rows[0].cost).toBeCloseTo(0.0011, 6);
   });
 
   it("el costo se calcula con rates de ConfigStore cuando existen", async () => {

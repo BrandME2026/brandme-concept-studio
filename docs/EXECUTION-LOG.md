@@ -193,3 +193,9 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 - **Cost Model RECOMPUTADO con pricing live de OpenRouter** (banner del doc atendido): pass-through exacto del list price de Anthropic para Claude (tabla verificada componente a componente) → el proforma baseline sigue válido. Único delta: sin Batch API (−50% en agentes batch ≈ $1.50–2.50/consultor/mes) → decisión (a) híbrido Anthropic-directo para batch (recomendada; el AIModelProvider lo hace trivial) o (b) absorber. Análisis + SQL de seed listos en `docs/COST-MODEL-OPENROUTER.md`; comentario flaggeado en el doc de 8090. **Sign-off: Junior.**
 - **`.githooks/pre-push`** instalado (bloquea push directo a main; sugerencia pendiente de las reglas globales).
 - **El loop se detiene aquí:** no queda trabajo ejecutable sin acciones humanas (Firebase, Trigger.dev, revisiones, sign-offs). Todo el estado está en 8090 + GitHub + este log.
+
+## ✍️ Sign-off del Cost Model (Junior: "hazlo", 2026-07-09 ~10:20)
+
+- `llm.pricing` SEMBRADO (migración 0010) con los rates verificados en vivo — la telemetría `llm_invocations` atribuye costos reales desde ya.
+- Banner del doc "Technology Stack & Cost Model" en 8090 actualizado (tracked suggestion pendiente de aceptar en la app): recompute ✅ + única decisión abierta = Batch API (recomendación: híbrido Anthropic-directo para agentes batch, decidir antes de Build 5).
+- `llm.daily_cost_cap_usd` sigue null (sin techo) hasta proforma firmada.
