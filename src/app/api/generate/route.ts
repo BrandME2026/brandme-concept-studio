@@ -20,7 +20,7 @@ import { isStripeConfigured } from "@/lib/stripe/client";
 import { slugify } from "@/lib/seo/slug";
 import { buildWhatsAppLink, buildMailtoLink, buildPhoneLink } from "@/lib/seo/contact-links";
 import { compileTailwindForHtml } from "@/lib/seo/compile-css";
-import { rateLimit, clientKey, llmBudget, tooMany, budgetExceeded, LIMITS } from "@/lib/security/rate-limit";
+import { checkRateLimit, clientKey, llmBudget, tooMany, budgetExceeded } from "@/lib/security/rate-limit";
 import type { DesignTokens } from "@/types/design";
 
 export const runtime = "nodejs";
@@ -127,7 +127,7 @@ const postHandler = tenantRoute(async (req, _ctx, { consultantId }) => {
 
       try {
         const result = streamText({
-          model: getDesignModel(quality),
+          model: await getDesignModel(quality),
           experimental_output: Output.object({ schema: designProposalSchema }),
           system: generateSystemPrompt(language, images.length, Boolean(userLogo || tokens?.meta?.logo), seo),
           messages: buildGenerateMessages(tokens, screenshot, brief, images),
@@ -259,9 +259,9 @@ const postHandler = tenantRoute(async (req, _ctx, { consultantId }) => {
 
 export async function POST(req: Request, ctx: unknown) {
   // Anti-abuso: rate-limit por IP + tope diario global (operación CARA: GPT-5.5/Sonnet).
-  const rl = rateLimit(`generate:${clientKey(req)}`, LIMITS.generate);
+  const rl = await checkRateLimit("generate", `generate:${clientKey(req)}`);
   if (!rl.ok) return tooMany(rl.retryAfter);
-  if (!llmBudget.tryConsume()) {
+  if (!(await llmBudget.tryConsume())) {
     console.warn("[generate] tope diario de LLM alcanzado", llmBudget.status());
     return budgetExceeded();
   }

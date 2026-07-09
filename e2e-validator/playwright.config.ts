@@ -31,6 +31,9 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       DATABASE_URL: APP_DB_URL,
+      // TTL corto SOLO para e2e: permite probar la liveness (<60s, REQ-PF-020.3)
+      // sin esperar el TTL de producción. El contrato de 60s es el default real.
+      CONFIG_CACHE_TTL_MS: "2000",
     },
   },
 });

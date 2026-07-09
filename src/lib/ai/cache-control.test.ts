@@ -38,14 +38,14 @@ describe("prompt caching — TTL explícito (AC-PF-016.6)", () => {
 
   it("getDesignModel interactivo usa cache_control ephemeral con TTL 5m", async () => {
     const { getDesignModel } = await import("./openrouter");
-    getDesignModel("alta", "interactive");
+    await getDesignModel("alta", "interactive");
     const last = modelCalls.at(-1)!;
     expect(last.options.cache_control).toEqual({ type: "ephemeral", ttl: "5m" });
   });
 
   it("getDesignModel batch usa cache_control ephemeral con TTL 1h", async () => {
     const { getDesignModel } = await import("./openrouter");
-    getDesignModel("alta", "batch");
+    await getDesignModel("alta", "batch");
     const last = modelCalls.at(-1)!;
     expect(last.options.cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
   });
@@ -62,7 +62,7 @@ describe("prompt caching — TTL explícito (AC-PF-016.6)", () => {
   it("el TTL es configurable por env (nunca el default del provider)", async () => {
     process.env.OPENROUTER_CACHE_TTL_INTERACTIVE = "1h";
     const { getDesignModel } = await import("./openrouter");
-    getDesignModel("alta", "interactive");
+    await getDesignModel("alta", "interactive");
     const last = modelCalls.at(-1)!;
     expect(last.options.cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
   });

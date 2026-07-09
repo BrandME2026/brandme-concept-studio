@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { synthesizeSpeech, isOpenAIConfigured } from "@/lib/ai/openai";
-import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
+import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ const fail = (code: string, message: string, status: number) =>
 
 /** Sintetiza voz (mp3) a partir de texto. Devuelve el audio directo (audio/mpeg). */
 export async function POST(req: Request) {
-  const rl = rateLimit(`speech:${clientKey(req)}`, LIMITS.speech);
+  const rl = await checkRateLimit("speech", `speech:${clientKey(req)}`);
   if (!rl.ok) return tooMany(rl.retryAfter);
 
   if (!isOpenAIConfigured()) return fail("NO_AUDIO", "Voz no configurada", 503);

@@ -6,7 +6,7 @@ import { getStripe, isStripeConfigured, siteUrl } from "@/lib/stripe/client";
 import { getSubscriptionForTenant, upsertCustomer } from "@/lib/db/subscriptions";
 import { withTenant } from "@/lib/db/tenant-context";
 import { tenantRoute } from "@/lib/api/tenant-route";
-import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
+import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,7 +83,7 @@ const postHandler = tenantRoute(async (request, _ctx, { consultantId }) => {
 });
 
 export async function POST(request: Request, ctx: unknown) {
-  const rl = rateLimit(`checkout:${clientKey(request)}`, LIMITS.checkout);
+  const rl = await checkRateLimit("checkout", `checkout:${clientKey(request)}`);
   if (!rl.ok) return tooMany(rl.retryAfter);
 
   if (!isDbConfigured()) return fail("NO_DB", "No disponible", 503);

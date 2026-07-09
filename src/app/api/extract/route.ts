@@ -3,12 +3,11 @@ import { urlInputSchema } from "@/lib/schemas";
 import { extractDesign } from "@/lib/extract/extract-design";
 import { assertSafeUrl } from "@/lib/extract/ssrf-guard";
 import {
-  rateLimit,
+  checkRateLimit,
   clientKey,
   llmBudget,
   tooMany,
   budgetExceeded,
-  LIMITS,
   acquireExtractSlot,
   releaseExtractSlot,
 } from "@/lib/security/rate-limit";
@@ -19,9 +18,9 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   // Anti-abuso: rate-limit por IP + tope diario (es pesado en RAM) + semáforo de concurrencia.
-  const rl = rateLimit(`extract:${clientKey(request)}`, LIMITS.extract);
+  const rl = await checkRateLimit("extract", `extract:${clientKey(request)}`);
   if (!rl.ok) return tooMany(rl.retryAfter);
-  if (!llmBudget.tryConsume()) {
+  if (!(await llmBudget.tryConsume())) {
     console.warn("[extract] tope diario alcanzado", llmBudget.status());
     return budgetExceeded();
   }
@@ -64,7 +63,7 @@ export async function POST(request: Request) {
   }
 
   // Semáforo: limita los browsers de Playwright simultáneos (protege la RAM).
-  if (!acquireExtractSlot()) {
+  if (!(await acquireExtractSlot())) {
     return NextResponse.json(
       { success: false, error: { code: "BUSY", message: "Servicio ocupado, intenta en unos segundos." } },
       { status: 503, headers: { "Retry-After": "5" } },

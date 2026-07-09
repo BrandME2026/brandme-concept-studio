@@ -4,7 +4,7 @@ import { isDbConfigured } from "@/lib/db/client";
 import { upsertUserAndLinkSession } from "@/lib/db/users";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import { verifyFirebaseToken } from "@/lib/auth/verify-token";
-import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
+import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,7 @@ export const runtime = "nodejs";
  * Login OPCIONAL: si no hay DB o token válido, responde sin romper.
  */
 export async function POST(req: Request) {
-  const rl = rateLimit(`auth:${clientKey(req)}`, LIMITS.chat);
+  const rl = await checkRateLimit("chat", `auth:${clientKey(req)}`);
   if (!rl.ok) return tooMany(rl.retryAfter);
 
   const auth = req.headers.get("authorization") ?? "";

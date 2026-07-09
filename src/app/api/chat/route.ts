@@ -10,7 +10,7 @@ import { isDbConfigured } from "@/lib/db/client";
 import { listAllGenerations } from "@/lib/db/history";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import type { DesignTokens } from "@/types/design";
-import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
+import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -51,7 +51,7 @@ async function realExamples(): Promise<string> {
 }
 
 export async function POST(req: Request) {
-  const rl = rateLimit(`chat:${clientKey(req)}`, LIMITS.chat);
+  const rl = await checkRateLimit("chat", `chat:${clientKey(req)}`);
   if (!rl.ok) return tooMany(rl.retryAfter);
 
   try {

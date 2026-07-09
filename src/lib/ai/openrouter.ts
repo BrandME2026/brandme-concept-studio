@@ -1,4 +1,5 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { getConfigString } from "@/lib/config/config-store";
 
 const apiKey = process.env.OPENROUTER_API_KEY;
 
@@ -15,15 +16,16 @@ const FALLBACK_MODELS = (
   .filter(Boolean);
 
 /**
- * Modelos seleccionables desde la UI (allowlist). "alta" = mejor benchmark de
- * diseño; "rapido" = balance calidad/coste/latencia.
+ * Calidades seleccionables desde la UI (allowlist). El MODELO concreto de cada
+ * calidad es un tunable EP-07 (WO-7): vive en PlatformConfig (`llm.model_alias_*`)
+ * y es editable sin deploy; estos son los fallbacks (= defaults sembrados).
  */
-export const QUALITY_MODELS = {
+const QUALITY_DEFAULTS = {
   alta: "openai/gpt-5.5",
   rapido: "anthropic/claude-sonnet-4.6",
 } as const;
 
-export type Quality = keyof typeof QUALITY_MODELS;
+export type Quality = keyof typeof QUALITY_DEFAULTS;
 
 const openrouter = createOpenRouter({
   apiKey,
@@ -45,13 +47,19 @@ const CACHE_TTL_BATCH = (process.env.OPENROUTER_CACHE_TTL_BATCH ?? "1h") as "5m"
 
 /**
  * Devuelve un modelo (con fallbacks automáticos de OpenRouter) para la calidad pedida.
- * El primario es el de la calidad; el resto del fallback se mantiene como respaldo.
+ * El primario se resuelve vía ConfigStore (llm.model_alias_alta/_rapido — editable
+ * sin deploy, WO-7); el resto del fallback se mantiene como respaldo.
  *
  * @param quality calidad del modelo (alta/rapido).
  * @param mode modo de invocación que define el TTL de cache (default interactivo).
  */
-export function getDesignModel(quality: Quality = "alta", mode: "interactive" | "batch" = "interactive") {
-  const primary = QUALITY_MODELS[quality] ?? DEFAULT_MODEL;
+export async function getDesignModel(
+  quality: Quality = "alta",
+  mode: "interactive" | "batch" = "interactive",
+) {
+  const configKey = quality === "alta" ? "model_alias_alta" : "model_alias_rapido";
+  const primary =
+    (await getConfigString("llm", configKey, QUALITY_DEFAULTS[quality])) || DEFAULT_MODEL;
   // OpenRouter limita el array `models` a 3 ítems. Primario + 2 fallbacks como máximo.
   const models = [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)].slice(0, 3);
   const ttl = mode === "batch" ? CACHE_TTL_BATCH : CACHE_TTL_INTERACTIVE;
@@ -60,9 +68,6 @@ export function getDesignModel(quality: Quality = "alta", mode: "interactive" | 
     cache_control: { type: "ephemeral", ttl },
   });
 }
-
-/** Modelo por defecto (alta calidad) para usos que no eligen calidad. */
-export const designModel = getDesignModel("alta");
 
 // Reasoning tokens de OpenRouter (chain-of-thought). DESACTIVADO por defecto en
 // generación: con reasoning activo el modelo emitía 130+ pasos de pensamiento antes del

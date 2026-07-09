@@ -4,7 +4,7 @@ import { chatModel, assertOpenRouterConfigured } from "@/lib/ai/openrouter";
 import { saveLead, slugExists } from "@/lib/db/leads";
 import { isDbConfigured } from "@/lib/db/client";
 import { withSystemContext } from "@/lib/db/tenant-context";
-import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
+import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
 
 // Anti-payload-bomb: límites de la conversación (cada mensaje cuesta tokens reales).
 const MAX_MESSAGES = 30;
@@ -45,7 +45,7 @@ const fail = (code: string, message: string, status: number) =>
 
 export async function POST(req: Request) {
   // Rate-limit por IP (barato, pero igual acotado para que nadie abuse).
-  const rl = rateLimit(`agent:${clientKey(req)}`, LIMITS.agent);
+  const rl = await checkRateLimit("agent", `agent:${clientKey(req)}`);
   if (!rl.ok) return tooMany(rl.retryAfter);
 
   try {

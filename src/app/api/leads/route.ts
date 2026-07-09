@@ -4,7 +4,7 @@ import { saveLead, slugExists, listLeadsForConsultant } from "@/lib/db/leads";
 import { isDbConfigured } from "@/lib/db/client";
 import { withSystemContext, withTenant } from "@/lib/db/tenant-context";
 import { tenantRoute } from "@/lib/api/tenant-route";
-import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
+import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,7 +53,7 @@ const fail = (code: string, message: string, status: number) =>
 
 export async function POST(request: Request) {
   // Rate-limit PRIMERO (frena el abuso aunque la DB esté caída).
-  const rl = rateLimit(`leads:${clientKey(request)}`, LIMITS.leads);
+  const rl = await checkRateLimit("leads", `leads:${clientKey(request)}`);
   if (!rl.ok) return tooMany(rl.retryAfter);
 
   if (!isDbConfigured()) return fail("NO_DB", "No disponible", 503);

@@ -9,10 +9,7 @@
  * API key en OpenRouter (ver README). Migrable a Redis sin cambiar las firmas.
  */
 
-const num = (v: string | undefined, def: number) => {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? n : def;
-};
+import { getConfigNumber } from "@/lib/config/config-store";
 
 // ── Rate-limit por clave (ventana fija en memoria) ──────────────────────────
 interface Bucket {
@@ -68,29 +65,31 @@ export function clientKey(req: Request): string {
 // Protege el dinero: aunque alguien sortee el rate-limit por IP, no se superan N
 // operaciones caras al día. Corta SOLO lo caro (generación premium / Playwright);
 // el chat/agente baratos no pasan por aquí (decisión: no matar la captación).
-const LLM_DAILY_CAP = num(process.env.LLM_DAILY_CAP, 300);
+// El cap es EP-07 (llm.daily_cap en PlatformConfig, editable sin deploy — WO-7).
 
 let dayKey = "";
 let dayCount = 0;
+let lastCap = 300; // último cap resuelto (para status() síncrono en logs)
 function utcDay(now: number): string {
   return new Date(now).toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
 }
 
 export const llmBudget = {
   /** Reserva 1 operación cara del cupo diario. false si ya se alcanzó el tope. */
-  tryConsume(): boolean {
+  async tryConsume(): Promise<boolean> {
+    lastCap = await getConfigNumber("llm", "daily_cap", 300);
     const today = utcDay(Date.now());
     if (today !== dayKey) {
       dayKey = today;
       dayCount = 0;
     }
-    if (dayCount >= LLM_DAILY_CAP) return false;
+    if (dayCount >= lastCap) return false;
     dayCount += 1;
     return true;
   },
   /** Estado actual (para logs/diagnóstico). */
   status() {
-    return { day: dayKey, used: dayCount, cap: LLM_DAILY_CAP };
+    return { day: dayKey, used: dayCount, cap: lastCap };
   },
 };
 
@@ -114,11 +113,12 @@ export function budgetExceeded() {
 // ── Semáforo de concurrencia (proteger RAM de Playwright en /api/extract) ───
 // Máximo de operaciones pesadas simultáneas. Si está lleno, se rechaza (no se encola
 // indefinidamente) para no acumular requests que tumben la instancia.
-const MAX_CONCURRENT_EXTRACT = num(process.env.EXTRACT_CONCURRENCY, 3);
+// El máximo es EP-07 (extract.max_concurrent en PlatformConfig — WO-7).
 let activeExtract = 0;
 
-export function acquireExtractSlot(): boolean {
-  if (activeExtract >= MAX_CONCURRENT_EXTRACT) return false;
+export async function acquireExtractSlot(): Promise<boolean> {
+  const max = await getConfigNumber("extract", "max_concurrent", 3);
+  if (activeExtract >= max) return false;
   activeExtract += 1;
   return true;
 }
@@ -126,14 +126,34 @@ export function releaseExtractSlot(): void {
   if (activeExtract > 0) activeExtract -= 1;
 }
 
-/** Límites por endpoint, configurables por env (ajustables sin tocar código). */
-export const LIMITS = {
-  generate: { windowMs: 60_000, max: num(process.env.RL_GENERATE_PER_MIN, 5) },
-  extract: { windowMs: 60_000, max: num(process.env.RL_EXTRACT_PER_MIN, 6) },
-  chat: { windowMs: 60_000, max: num(process.env.RL_CHAT_PER_MIN, 20) },
-  agent: { windowMs: 60_000, max: num(process.env.RL_AGENT_PER_MIN, 20) },
-  resolve: { windowMs: 60_000, max: num(process.env.RL_RESOLVE_PER_MIN, 15) },
-  leads: { windowMs: 60_000, max: num(process.env.RL_LEADS_PER_MIN, 5) },
-  checkout: { windowMs: 60_000, max: num(process.env.RL_CHECKOUT_PER_MIN, 5) },
-  speech: { windowMs: 60_000, max: num(process.env.RL_SPEECH_PER_MIN, 10) },
+// ── Caps por endpoint (EP-07: rate_limiting.<name>_per_min en PlatformConfig) ─
+// Los fallbacks son los defaults sembrados por la migración 0004; los env RL_*
+// dejaron de leerse (contrato EP-07: sin hardcode ni env para tunables).
+export type LimitName =
+  | "generate"
+  | "extract"
+  | "chat"
+  | "agent"
+  | "resolve"
+  | "leads"
+  | "checkout"
+  | "speech";
+
+const LIMIT_DEFAULTS: Record<LimitName, number> = {
+  generate: 5,
+  extract: 6,
+  chat: 20,
+  agent: 20,
+  resolve: 15,
+  leads: 5,
+  checkout: 5,
+  speech: 10,
 };
+
+const WINDOW_MS = 60_000;
+
+/** Rate-limit por clave con el cap EP-07 del endpoint (ConfigStore, <60s liveness). */
+export async function checkRateLimit(name: LimitName, key: string): Promise<RateResult> {
+  const max = await getConfigNumber("rate_limiting", `${name}_per_min`, LIMIT_DEFAULTS[name]);
+  return rateLimit(key, { windowMs: WINDOW_MS, max });
+}

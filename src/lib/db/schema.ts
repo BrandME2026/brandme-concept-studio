@@ -73,6 +73,21 @@ export const consultantSessions = pgTable(
   (t) => [index("idx_consultant_sessions_consultant").on(t.consultantId)],
 );
 
+/** Config runtime EP-07 (WO-7). Tabla de plataforma SIN RLS; read path = ConfigStore. */
+export const platformConfig = pgTable(
+  "platform_config",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    featureArea: text("feature_area").notNull(),
+    configKey: text("config_key").notNull(),
+    currentValue: jsonb("current_value"),
+    defaultValue: jsonb("default_value").notNull(),
+    lastModifiedAt: timestamp("last_modified_at", { withTimezone: true }).notNull().defaultNow(),
+    lastModifiedBy: uuid("last_modified_by"), // FK a identidad admin llega en Build 6
+  },
+  (t) => [uniqueIndex("idx_platform_config_area_key").on(t.featureArea, t.configKey)],
+);
+
 // ── Tablas tenant-scoped (RLS + FORCE) ───────────────────────────────────────
 
 export const conversations = pgTable(
