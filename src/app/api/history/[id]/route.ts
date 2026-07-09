@@ -3,6 +3,7 @@ import { getGeneration } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
 import { withTenant } from "@/lib/db/tenant-context";
 import { tenantRoute } from "@/lib/api/tenant-route";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ const getHandler = tenantRoute<Ctx>(async (_req, { params }, { consultantId }) =
     }
     return NextResponse.json({ success: true, data: record });
   } catch (err) {
-    console.error("[history] fallo obteniendo", err);
+    captureError(err, "[history] fallo obteniendo");
     return NextResponse.json(
       { success: false, error: { code: "HISTORY_FAILED", message: "Error" } },
       { status: 500 },

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getConfigNumber } from "@/lib/config/config-store";
 import { db, withSystemContext } from "@/lib/db/tenant-context";
+import { captureError, withObservabilityContext } from "@/lib/observability/observability";
 
 /**
  * WebhookHandlerPrimitive (WO-6, EP-02 / REQ-PF-009): base reutilizable de TODO
@@ -47,7 +48,7 @@ async function purgeExpired(vendor: string): Promise<void> {
       await db().query(`DELETE FROM webhook_events WHERE expires_at <= now()`);
     });
   } catch (err) {
-    console.error(`[webhooks:${vendor}] purga TTL falló (no bloquea)`, err);
+    captureError(err, `[webhooks:${vendor}] purga TTL falló (no bloquea)`);
   }
 }
 
@@ -76,7 +77,10 @@ export async function handleWebhook<E, P = E>(
   );
 
   try {
-    const outcome = await withSystemContext(`webhook-${adapter.vendor}`, async () => {
+    const outcome = await withObservabilityContext(
+      { surface: `webhook-${adapter.vendor}` },
+      () =>
+        withSystemContext(`webhook-${adapter.vendor}`, async () => {
       // Insert-before-process: reserva el event_id ANTES del negocio. Un replay
       // (concurrente o posterior) hace rowCount 0 y se reconoce sin ejecutar.
       const inserted = await db().query(
@@ -88,13 +92,14 @@ export async function handleWebhook<E, P = E>(
       if ((inserted.rowCount ?? 0) === 0) return "replay" as const;
       await adapter.process(prepared);
       return "processed" as const;
-    });
+        }),
+    );
     return NextResponse.json({ received: true, replay: outcome === "replay" });
   } catch (err) {
     // Rollback ya aplicado por withSystemContext: el dedup NO se consumió.
     // 500 → el vendor reintenta; el reintento procesará (dedup libre) y el
     // negocio es idempotente por contrato.
-    console.error(`[webhooks:${adapter.vendor}] proceso falló (${parsed.eventId})`, err);
+    captureError(err, `[webhooks:${adapter.vendor}] proceso falló (${parsed.eventId})`);
     return NextResponse.json({ error: "Procesamiento falló" }, { status: 500 });
   }
 }

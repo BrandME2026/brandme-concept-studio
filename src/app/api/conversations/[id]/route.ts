@@ -7,6 +7,7 @@ import {
 import { isDbConfigured } from "@/lib/db/client";
 import { withTenant } from "@/lib/db/tenant-context";
 import { tenantRoute } from "@/lib/api/tenant-route";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ const getHandler = tenantRoute<Ctx>(async (_req, { params }, { consultantId }) =
     }
     return NextResponse.json({ success: true, data: rec });
   } catch (err) {
-    console.error("[conversations/id] GET fallo", err);
+    captureError(err, "[conversations/id] GET fallo");
     return NextResponse.json(
       { success: false, error: { code: "GET_FAILED", message: "No se pudo cargar" } },
       { status: 500 },
@@ -52,7 +53,7 @@ const putHandler = tenantRoute<Ctx>(async (req, { params }, { consultantId }) =>
     await withTenant(consultantId, () => saveConversation(id, patch));
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[conversations/id] PUT fallo", err);
+    captureError(err, "[conversations/id] PUT fallo");
     return NextResponse.json(
       { success: false, error: { code: "SAVE_FAILED", message: "No se pudo guardar" } },
       { status: 500 },
@@ -72,7 +73,7 @@ const deleteHandler = tenantRoute<Ctx>(async (_req, { params }, { consultantId }
     await withTenant(consultantId, () => deleteConversation(id));
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[conversations/id] DELETE fallo", err);
+    captureError(err, "[conversations/id] DELETE fallo");
     return NextResponse.json(
       { success: false, error: { code: "DELETE_FAILED", message: "No se pudo borrar" } },
       { status: 500 },

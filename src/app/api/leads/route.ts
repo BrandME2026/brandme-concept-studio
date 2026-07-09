@@ -5,6 +5,7 @@ import { isDbConfigured } from "@/lib/db/client";
 import { withSystemContext, withTenant } from "@/lib/db/tenant-context";
 import { tenantRoute } from "@/lib/api/tenant-route";
 import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ const getHandler = tenantRoute(async (_req, _ctx, { consultantId }) => {
     const leads = await withTenant(consultantId, () => listLeadsForConsultant());
     return NextResponse.json({ success: true, data: leads });
   } catch (err) {
-    console.error("[leads] fallo listando", err);
+    captureError(err, "[leads] fallo listando");
     return NextResponse.json({ success: true, data: [] });
   }
 });
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
     if (!saved) return fail("NOT_FOUND", "Página no encontrada", 404);
     return NextResponse.json({ success: true, data: { ok: true } });
   } catch (err) {
-    console.error("[leads] fallo guardando", err);
+    captureError(err, "[leads] fallo guardando");
     return fail("SAVE_FAILED", "No se pudo registrar", 500);
   }
 }

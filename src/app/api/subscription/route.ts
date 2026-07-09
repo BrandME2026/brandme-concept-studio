@@ -4,6 +4,7 @@ import { isStripeConfigured } from "@/lib/stripe/client";
 import { getSubscriptionForTenant, isSubscriptionActive } from "@/lib/db/subscriptions";
 import { withTenant } from "@/lib/db/tenant-context";
 import { tenantRoute } from "@/lib/api/tenant-route";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ const getHandler = tenantRoute(async (_req, _ctx, { consultantId }) => {
       },
     });
   } catch (err) {
-    console.error("[subscription] fallo consultando estado", err);
+    captureError(err, "[subscription] fallo consultando estado");
     return NextResponse.json({ success: true, data: { active: false, configured: true } });
   }
 });

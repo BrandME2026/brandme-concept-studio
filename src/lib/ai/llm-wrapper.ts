@@ -5,6 +5,7 @@ import { db, withSystemContext } from "@/lib/db/tenant-context";
 import type { AIModelProvider, CacheTtl } from "./model-provider";
 import { openRouterProvider } from "./openrouter-provider";
 import { llmBudgetBreaker, LLMBudgetExceededError } from "./llm-budget-breaker";
+import { withObservabilityContext } from "@/lib/observability/observability";
 
 /**
  * LLMWrapper (WO-4, REQ-PF-016): la interfaz EXCLUSIVA de invocación de modelos
@@ -154,7 +155,11 @@ export async function invokeLLM(params: InvokeLLMParams): Promise<InvokeLLMResul
   const model = provider.languageModel(resolvedModel, { fallbackModels, cacheTtl: ttl });
 
   const started = Date.now();
-  const result = await generateText({ model, system, prompt });
+  // Tags EP-04 (WO-8): cualquier captura downstream hereda agente + alias.
+  const result = await withObservabilityContext(
+    { agent_id: agentId ?? undefined, model_alias: alias },
+    () => generateText({ model, system, prompt }),
+  );
   const latencyMs = Date.now() - started;
 
   const rawUsage = result.usage as {

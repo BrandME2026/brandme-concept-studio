@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { synthesizeSpeech, isOpenAIConfigured } from "@/lib/ai/openai";
 import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    console.error("[text-to-speech] fallo", err);
+    captureError(err, "[text-to-speech] fallo");
     return fail("TTS_FAILED", "No se pudo generar el audio", 500);
   }
 }

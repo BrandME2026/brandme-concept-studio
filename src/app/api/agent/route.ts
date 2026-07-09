@@ -5,6 +5,7 @@ import { saveLead, slugExists } from "@/lib/db/leads";
 import { isDbConfigured } from "@/lib/db/client";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
+import { captureError } from "@/lib/observability/observability";
 
 // Anti-payload-bomb: límites de la conversación (cada mensaje cuesta tokens reales).
 const MAX_MESSAGES = 30;
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
             if (!saved) return { ok: false, reason: "slug inválido" };
             return { ok: true };
           } catch (e) {
-            console.error("[agent] captureLead falló", e);
+            captureError(e, "[agent] captureLead falló");
             return { ok: false };
           }
         },

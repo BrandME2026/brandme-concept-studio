@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { TenantContextError } from "@/lib/db/tenant-context";
 import { requireConsultantId } from "@/lib/tenant";
+import { withObservabilityContext } from "@/lib/observability/observability";
 
 /**
  * Wrapper de route handlers autenticados (WO-3, AC-PF-001.4): resuelve el
@@ -25,6 +26,15 @@ export function tenantRoute<Ctx = unknown>(
       }
       throw err;
     }
-    return handler(req, ctx, { consultantId });
+    // Tags EP-04 automáticos (WO-8): todo captureError dentro del handler
+    // hereda surface + consultant + role sin que el caller los setee.
+    return withObservabilityContext(
+      {
+        surface: new URL(req.url).pathname,
+        consultant_id: consultantId,
+        role: "consultant",
+      },
+      () => handler(req, ctx, { consultantId }),
+    );
   };
 }

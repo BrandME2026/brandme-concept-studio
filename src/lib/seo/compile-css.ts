@@ -1,6 +1,7 @@
 import { compile } from "tailwindcss";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { captureError } from "@/lib/observability/observability";
 
 /**
  * Compila el CSS de Tailwind para un HTML concreto, EN EL SERVIDOR al generar la página.
@@ -55,7 +56,7 @@ export async function compileTailwindForHtml(html: string): Promise<string | nul
     const css = compiler.build(candidates);
     return css && css.length > 0 ? css : null;
   } catch (err) {
-    console.error("[compile-css] fallo compilando Tailwind, se usará el CDN", err);
+    captureError(err, "[compile-css] fallo compilando Tailwind, se usará el CDN");
     return null;
   }
 }

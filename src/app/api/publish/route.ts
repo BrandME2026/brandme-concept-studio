@@ -6,6 +6,7 @@ import { isSubscriptionActive } from "@/lib/db/subscriptions";
 import { publishGeneration } from "@/lib/db/history";
 import { withTenant } from "@/lib/db/tenant-context";
 import { tenantRoute } from "@/lib/api/tenant-route";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ const postHandler = tenantRoute(async (request, _ctx, { consultantId }) => {
     if (!ok) return fail("NOT_FOUND", "Página no encontrada o no es tuya", 404);
     return NextResponse.json({ success: true, data: { published: true } });
   } catch (err) {
-    console.error("[publish] fallo publicando", err);
+    captureError(err, "[publish] fallo publicando");
     return fail("PUBLISH_FAILED", "No se pudo publicar", 500);
   }
 });

@@ -4,6 +4,7 @@ import { getPublicConversationPage } from "@/lib/db/conversations";
 import { isDbConfigured } from "@/lib/db/client";
 import { isStripeConfigured } from "@/lib/stripe/client";
 import { withSystemContext } from "@/lib/db/tenant-context";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export async function GET(
       data: { id: rec.id, url: rec.url, name: rec.name, html: rec.html },
     });
   } catch (err) {
-    console.error("[gallery/id] fallo", err);
+    captureError(err, "[gallery/id] fallo");
     return NextResponse.json(
       { success: false, error: { code: "GALLERY_FAILED", message: "No se pudo cargar" } },
       { status: 500 },

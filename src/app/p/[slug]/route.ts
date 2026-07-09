@@ -4,6 +4,7 @@ import { isDbConfigured } from "@/lib/db/client";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import { isStripeConfigured } from "@/lib/stripe/client";
 import { buildPublicDoc, type PublicDocMeta } from "@/lib/seo/build-public-doc";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -123,7 +124,7 @@ export async function GET(
 
     return notFound();
   } catch (err) {
-    console.error("[p/slug] fallo sirviendo página", err);
+    captureError(err, "[p/slug] fallo sirviendo página");
     return notFound();
   }
 }

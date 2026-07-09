@@ -7,6 +7,7 @@ import { getSubscriptionForTenant, upsertCustomer } from "@/lib/db/subscriptions
 import { withTenant } from "@/lib/db/tenant-context";
 import { tenantRoute } from "@/lib/api/tenant-route";
 import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ const fail = (code: string, message: string, status: number) =>
 const postHandler = tenantRoute(async (request, _ctx, { consultantId }) => {
   const base = siteUrl();
   if (process.env.NODE_ENV === "production" && base.includes("localhost")) {
-    console.error("[checkout] NEXT_PUBLIC_SITE_URL apunta a localhost en producción");
+    captureError(new Error("[checkout] NEXT_PUBLIC_SITE_URL apunta a localhost en producción"));
     return fail("BAD_CONFIG", "Configuración de sitio inválida", 500);
   }
 
@@ -77,7 +78,7 @@ const postHandler = tenantRoute(async (request, _ctx, { consultantId }) => {
     if (!checkout.url) return fail("NO_URL", "No se pudo iniciar el pago", 502);
     return NextResponse.json({ success: true, data: { url: checkout.url } });
   } catch (err) {
-    console.error("[checkout] fallo creando sesión", err);
+    captureError(err, "[checkout] fallo creando sesión");
     return fail("CHECKOUT_FAILED", "No se pudo iniciar el pago", 500);
   }
 });

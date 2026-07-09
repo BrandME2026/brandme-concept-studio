@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { urlInputSchema } from "@/lib/schemas";
 import { extractDesign } from "@/lib/extract/extract-design";
 import { assertSafeUrl } from "@/lib/extract/ssrf-guard";
+import { captureError } from "@/lib/observability/observability";
 import {
   checkRateLimit,
   clientKey,
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
     const data = await extractDesign(parsed.data.url);
     return NextResponse.json({ success: true, data });
   } catch (err) {
-    console.error("[extract] fallo extrayendo", parsed.data.url, err);
+    captureError(err, `[extract] fallo extrayendo ${parsed.data.url}`);
     return NextResponse.json(
       {
         success: false,

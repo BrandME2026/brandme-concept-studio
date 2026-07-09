@@ -3,6 +3,7 @@ import { chatModel } from "@/lib/ai/openrouter";
 import { BRAND_RESOLVE_PROMPT } from "@/lib/ai/prompts";
 import { resolveResultSchema } from "@/lib/schemas";
 import { assertSafeUrl } from "@/lib/extract/ssrf-guard";
+import { captureError } from "@/lib/observability/observability";
 
 const VERIFY_TIMEOUT_MS = 8_000;
 
@@ -52,7 +53,7 @@ export async function resolveBrandToUrl(query: string): Promise<ResolveOutcome> 
     domain = object.domain.trim();
     confidence = object.confidence;
   } catch (err) {
-    console.error("[resolve] fallo del modelo", query, err);
+    captureError(err, `[resolve] fallo del modelo (${query})`);
     return { error: "No se pudo identificar la web. Intenta con la URL." };
   }
 

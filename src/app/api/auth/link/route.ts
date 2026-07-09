@@ -5,6 +5,7 @@ import { upsertUserAndLinkSession } from "@/lib/db/users";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import { verifyFirebaseToken } from "@/lib/auth/verify-token";
 import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ success: true, data: { linked: true } });
   } catch (e) {
-    console.error("[auth/link] no se pudo vincular la sesión", e);
+    captureError(e, "[auth/link] no se pudo vincular la sesión");
     return NextResponse.json(
       { success: false, error: { code: "LINK_FAILED", message: "No se pudo vincular" } },
       { status: 500 },

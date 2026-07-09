@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { transcribeAudio, isOpenAIConfigured } from "@/lib/ai/openai";
 import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     const text = await transcribeAudio(audio, `audio.${ext}`, lang);
     return NextResponse.json({ success: true, data: { text } });
   } catch (err) {
-    console.error("[speech-to-text] fallo", err);
+    captureError(err, "[speech-to-text] fallo");
     return fail("STT_FAILED", "No se pudo transcribir", 500);
   }
 }

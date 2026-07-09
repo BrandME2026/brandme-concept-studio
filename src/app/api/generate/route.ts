@@ -22,6 +22,7 @@ import { buildWhatsAppLink, buildMailtoLink, buildPhoneLink } from "@/lib/seo/co
 import { compileTailwindForHtml } from "@/lib/seo/compile-css";
 import { checkRateLimit, clientKey, llmBudget, tooMany, budgetExceeded } from "@/lib/security/rate-limit";
 import type { DesignTokens } from "@/types/design";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -107,7 +108,7 @@ const postHandler = tenantRoute(async (req, _ctx, { consultantId }) => {
       }
     } catch (e) {
       // Si el check falla, no bloqueamos la generación (degradación elegante).
-      console.error("[generate] check de duplicado falló", e);
+      captureError(e, "[generate] check de duplicado falló");
     }
   }
 
@@ -225,13 +226,13 @@ const postHandler = tenantRoute(async (req, _ctx, { consultantId }) => {
             );
             slug = saved.slug;
           } catch (e) {
-            console.error("[generate] no se pudo guardar en historial", e);
+            captureError(e, "[generate] no se pudo guardar en historial");
           }
         }
 
         send({ type: "done", proposal: object, designMd, html, slug, brand, city });
       } catch (err) {
-        console.error("[generate] fallo generando propuesta", err);
+        captureError(err, "[generate] fallo generando propuesta");
         send({ type: "error", message: "No se pudo generar la propuesta" });
       } finally {
         if (!closed) {

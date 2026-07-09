@@ -4,6 +4,7 @@ import { createConversation, listConversations } from "@/lib/db/conversations";
 import { isDbConfigured } from "@/lib/db/client";
 import { withTenant } from "@/lib/db/tenant-context";
 import { tenantRoute } from "@/lib/api/tenant-route";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ const getHandler = tenantRoute(async (_req, _ctx, { consultantId }) => {
     const items = await withTenant(consultantId, () => listConversations());
     return NextResponse.json({ success: true, data: items });
   } catch (err) {
-    console.error("[conversations] fallo listando", err);
+    captureError(err, "[conversations] fallo listando");
     return NextResponse.json(
       { success: false, error: { code: "LIST_FAILED", message: "No se pudo cargar" } },
       { status: 500 },
@@ -33,7 +34,7 @@ const postHandler = tenantRoute(async (_req, _ctx, { consultantId }) => {
     const id = await withTenant(consultantId, () => createConversation(sessionId));
     return NextResponse.json({ success: true, data: { id } });
   } catch (err) {
-    console.error("[conversations] fallo creando", err);
+    captureError(err, "[conversations] fallo creando");
     return NextResponse.json(
       { success: false, error: { code: "CREATE_FAILED", message: "No se pudo crear" } },
       { status: 500 },

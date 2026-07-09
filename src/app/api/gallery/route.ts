@@ -3,6 +3,7 @@ import { listAllGenerations, countAllGenerations } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
 import { isStripeConfigured } from "@/lib/stripe/client";
 import { withSystemContext } from "@/lib/db/tenant-context";
+import { captureError } from "@/lib/observability/observability";
 
 export const runtime = "nodejs";
 // Lee la DB en runtime — sin esto Next hornea la respuesta en build (sin DATABASE_URL
@@ -27,7 +28,7 @@ export async function GET() {
     });
     return NextResponse.json({ success: true, data: { items, total } });
   } catch (err) {
-    console.error("[gallery] fallo listando", err);
+    captureError(err, "[gallery] fallo listando");
     // La galería es decorativa en la home: ante fallo, vacío en vez de romper.
     return NextResponse.json({ success: true, data: { items: [], total: 0 } });
   }
