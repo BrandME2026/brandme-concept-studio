@@ -11,7 +11,11 @@ import { ROUTE_MANIFEST } from "../../src/lib/api/route-manifest";
  * sin clasificar rompe CI nombrándolo.
  */
 
-const APP_DIR = join(__dirname, "..", "..", "src", "app");
+// Override SOLO para el drill del merge gate (e2e-validator/tests/ci): permite
+// correr el registro contra una COPIA del árbol con un endpoint ofensor, sin
+// mutar src/ (mutarlo en vivo tumba el dev server del e2e).
+const APP_DIR =
+  process.env.ENDPOINT_REGISTRY_APP_DIR ?? join(__dirname, "..", "..", "src", "app");
 
 function discoverEndpoints(): string[] {
   const files = readdirSync(APP_DIR, { recursive: true }) as string[];

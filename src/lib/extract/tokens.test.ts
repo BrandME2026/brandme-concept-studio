@@ -33,6 +33,7 @@ function makeRaw(overrides: Partial<RawExtraction> = {}): RawExtraction {
     maxWidth: "1280px",
     usesFlex: true,
     usesGrid: true,
+    logo: null,
     ...overrides,
   };
 }

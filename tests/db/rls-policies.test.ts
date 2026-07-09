@@ -21,14 +21,13 @@ const MODES = ["pooled", "direct"] as const;
 
 let A: TenantFixture;
 let B: TenantFixture;
-let seedA: SeededIds;
 let seedB: SeededIds;
 
 beforeAll(async () => {
   await resetAndMigrate();
   A = await createTenant("a");
   B = await createTenant("b");
-  seedA = await seedTenantData(A, "a");
+  await seedTenantData(A, "a");
   seedB = await seedTenantData(B, "b");
 });
 

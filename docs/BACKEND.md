@@ -261,3 +261,12 @@ pnpm db:down      # apaga y limpia
 6. **Rollback**: solo vía migración inversa escrita ex profeso (`DROP POLICY` +
    `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` + restaurar `DATABASE_URL` al rol original).
    No hay rollback automático.
+
+---
+
+## CI / merge gate (WO-34)
+
+- **Workflow:** `.github/workflows/ci.yml` — job `verify`: install congelado → `pnpm lint` → `pnpm tsc --noEmit` → Postgres en Docker (mismo `docker-compose.yml` que local, roles RLS reales) → `pnpm test:all` (**aquí corre la TenantIsolationTestSuite: es EL merge gate, AC-PF-002.4**) → `pnpm test:e2e` (17 specs: aislamiento, config, LLM, webhooks, headers anti-drift, drill del gate).
+- **Branch protection:** `development` (el "main" operativo del repo) exige el check `lint + typecheck + tests + tenant-isolation gate` con strict mode. Nada mergea sin el gate.
+- **Ofensores nombrados:** un endpoint sin clasificación de aislamiento rompe `endpoint-registry` nombrándolo (AC-PF-002.3); el drill `e2e-validator/tests/ci/merge-gate.spec.ts` lo demuestra contra una copia del árbol en cada corrida.
+- **Local = CI:** los mismos comandos, el mismo compose, los mismos roles. Reproducir un fallo de CI: `pnpm db:up && pnpm lint && pnpm tsc --noEmit && pnpm test:all && pnpm test:e2e`.

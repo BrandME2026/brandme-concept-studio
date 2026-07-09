@@ -130,9 +130,7 @@ test("@COV_PF_TENANT_001.1 @security @multitenant — A no lee datos de B en nin
   expect(stillThere.status(), "la conversación de B sigue viva tras el DELETE de A").toBe(200);
 });
 
-test("@COV_PF_TENANT_001.2 @security @multitenant — sin sesión: 401 y cero filas leídas", async ({
-  playwright,
-}, testInfo) => {
+test("@COV_PF_TENANT_001.2 @security @multitenant — sin sesión: 401 y cero filas leídas", async ({}, testInfo) => {
   const anon = await pwRequest.newContext({
     baseURL: testInfo.project.use.baseURL!,
   });

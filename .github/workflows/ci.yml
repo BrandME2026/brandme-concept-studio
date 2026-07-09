@@ -1,0 +1,50 @@
+# CI / Test Runner (WO-34, blueprint 09011d5d): el gate que protege main.
+# La TenantIsolationTestSuite (WO-3) corre dentro de `pnpm test:all` y BLOQUEA
+# el merge desde Build 1 (AC-PF-002.4); los endpoints sin protección declarada
+# se reportan POR NOMBRE (endpoint-registry, AC-PF-002.3). Los specs e2e de
+# headers (WO-32) hacen imposible el drift silencioso de seguridad (ADR-001).
+name: CI
+
+# El "main" operativo de este repo es `development` (default branch; el flujo
+# del equipo nunca pushea a main directamente).
+on:
+  pull_request:
+  push:
+    branches: [development, 8080juniora]
+
+jobs:
+  verify:
+    name: lint + typecheck + tests + tenant-isolation gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # versión de pnpm desde packageManager
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependencias (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm tsc --noEmit
+
+      - name: Levantar Postgres de test (roles RLS reales)
+        run: docker compose up -d --wait db-test
+
+      - name: Vitest — unit + tenant-isolation suite (MERGE GATE)
+        run: pnpm test:all
+
+      - name: E2E — app real (aislamiento, config, webhooks, headers, merge gate)
+        run: pnpm test:e2e
+
+      - name: Apagar Postgres de test
+        if: always()
+        run: docker compose down -v

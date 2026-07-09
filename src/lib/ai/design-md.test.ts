@@ -21,6 +21,13 @@ const proposal: DesignProposal = {
   },
   principles: ["Contraste de superficies", "Una sola pieza de color de marca"],
   html: "<section>hola</section>",
+  interactions: "hero con fade GSAP y scroll-reveal",
+  seo: {
+    metaTitle: "Abre tu franquicia Aurora",
+    metaDescription: "Invierte en Aurora: soporte completo y retorno probado.",
+    keywords: ["franquicia aurora", "abrir aurora"],
+  },
+  faq: [{ q: "¿Cuánto cuesta?", a: "Depende del mercado; agenda una llamada." }],
 };
 
 describe("serializeDesignMd", () => {
