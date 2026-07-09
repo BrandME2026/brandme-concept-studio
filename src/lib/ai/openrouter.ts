@@ -60,9 +60,21 @@ export async function getDesignModel(
   const configKey = quality === "alta" ? "model_alias_alta" : "model_alias_rapido";
   const primary =
     (await getConfigString("llm", configKey, QUALITY_DEFAULTS[quality])) || DEFAULT_MODEL;
-  // OpenRouter limita el array `models` a 3 ítems. Primario + 2 fallbacks como máximo.
-  const models = [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)].slice(0, 3);
   const ttl = mode === "batch" ? CACHE_TTL_BATCH : CACHE_TTL_INTERACTIVE;
+  return buildOpenRouterModel(primary, FALLBACK_MODELS, ttl);
+}
+
+/**
+ * @internal Builder compartido con el adapter AIModelProvider (WO-4): modelo
+ * OpenRouter con fallbacks y cache_control SIEMPRE explícito.
+ */
+export function buildOpenRouterModel(
+  primary: string,
+  fallbackModels: string[],
+  ttl: "5m" | "1h",
+) {
+  // OpenRouter limita el array `models` a 3 ítems. Primario + 2 fallbacks como máximo.
+  const models = [primary, ...fallbackModels.filter((m) => m !== primary)].slice(0, 3);
   return openrouter(primary, {
     extraBody: { models },
     cache_control: { type: "ephemeral", ttl },

@@ -55,6 +55,9 @@ describe("migración 0004 (seeds)", () => {
     }
     for (const row of rows) {
       expect(row.current, `${row.config_key} current_value inicial`).toBeNull();
+      // Excepción documentada: daily_cost_cap_usd tiene default jsonb null =
+      // "sin techo" hasta que el Cost Model se recalcule (WO-4).
+      if (`${row.feature_area}.${row.config_key}` === "llm.daily_cost_cap_usd") continue;
       expect(row.def, `${row.config_key} default_value`).not.toBeNull();
     }
   });

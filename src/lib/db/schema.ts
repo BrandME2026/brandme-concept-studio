@@ -2,7 +2,9 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   jsonb,
+  numeric,
   pgTable,
   text,
   timestamp,
@@ -86,6 +88,30 @@ export const platformConfig = pgTable(
     lastModifiedBy: uuid("last_modified_by"), // FK a identidad admin llega en Build 6
   },
   (t) => [uniqueIndex("idx_platform_config_area_key").on(t.featureArea, t.configKey)],
+);
+
+/** Telemetría por invocación LLM (WO-4). Plataforma, SIN RLS; exenta de retención estándar. */
+export const llmInvocations = pgTable(
+  "llm_invocations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    modelAlias: text("model_alias").notNull(),
+    resolvedModelName: text("resolved_model_name").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    cacheWriteTtlVariant: text("cache_write_ttl_variant"),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    estimatedCostUsd: numeric("estimated_cost_usd", { precision: 10, scale: 6 })
+      .notNull()
+      .default("0"),
+    latencyMs: integer("latency_ms").notNull().default(0),
+    consultantId: uuid("consultant_id").references(() => consultants.id),
+    agentId: text("agent_id"),
+    invocationMode: text("invocation_mode").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_llm_invocations_created").on(t.createdAt.desc())],
 );
 
 // ── Tablas tenant-scoped (RLS + FORCE) ───────────────────────────────────────
