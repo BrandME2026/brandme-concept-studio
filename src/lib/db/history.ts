@@ -1,5 +1,12 @@
-import { getPool } from "./client";
+import { db } from "./tenant-context";
 import { normalizeKey } from "@/lib/seo/slug";
+
+/**
+ * Generaciones (webs publicables). Lecturas del consultor van tenant-scoped vía
+ * RLS (withTenant); las superficies públicas (galería, /p/[slug], sitemap) usan
+ * withSystemContext y mantienen el publishGate en SQL — el gate de pago NO se
+ * codifica en políticas RLS (ver drizzle/0003_rls.sql).
+ */
 
 export interface GenerationRecord {
   id: string;
@@ -23,63 +30,27 @@ export interface GenerationListItem {
   slug?: string | null;
 }
 
-let schemaReady = false;
-
-/** Crea la tabla si no existe (idempotente). Se llama perezosamente. */
-async function ensureSchema(): Promise<void> {
-  if (schemaReady) return;
-  await getPool().query(`
-    CREATE TABLE IF NOT EXISTS generations (
-      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      session_id   TEXT NOT NULL,
-      url          TEXT NOT NULL,
-      name         TEXT NOT NULL,
-      design_md    TEXT NOT NULL,
-      html         TEXT NOT NULL,
-      screenshot   TEXT,
-      interactions TEXT,
-      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS idx_generations_session
-      ON generations (session_id, created_at DESC);
-    -- Campos SEO (idempotente sobre tablas ya creadas en prod).
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS slug TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS brand TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS city TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS meta_title TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS meta_description TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS whatsapp TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS email TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS phone TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS keywords TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS faq TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS css TEXT;
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS form_fields TEXT;
-    -- Gate de publicación (pago). Las filas YA existentes se marcan publicadas (legacy
-    -- público): el DEFAULT solo aplica a inserciones nuevas, así que el primer ALTER deja
-    -- las viejas en true y luego cambiamos el default a false para las que vienen.
-    ALTER TABLE generations ADD COLUMN IF NOT EXISTS published BOOLEAN NOT NULL DEFAULT true;
-    ALTER TABLE generations ALTER COLUMN published SET DEFAULT false;
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_generations_slug
-      ON generations (slug) WHERE slug IS NOT NULL;
-  `);
-  schemaReady = true;
-}
-
-/** Reserva un slug único para `slug` base, añadiendo -2, -3… si ya existe. */
-async function uniqueSlug(base: string): Promise<string> {
+/**
+ * Reserva un slug único para `base`, añadiendo -2, -3… si ya existe. La unicidad
+ * es GLOBAL entre tenants: úsalo bajo withSystemContext (bajo tenant solo verías
+ * tus propios slugs). El índice único idx_generations_slug es la red final ante
+ * un race.
+ */
+export async function uniqueSlug(base: string): Promise<string> {
   for (let i = 1; i <= 50; i++) {
     const candidate = i === 1 ? base : `${base}-${i}`;
-    const { rows } = await getPool().query(
-      `SELECT 1 FROM generations WHERE slug = $1 LIMIT 1`,
-      [candidate],
-    );
+    const { rows } = await db().query(`SELECT 1 FROM generations WHERE slug = $1 LIMIT 1`, [
+      candidate,
+    ]);
     if (rows.length === 0) return candidate;
   }
   return `${base}-${Date.now().toString(36).slice(-4)}`;
 }
 
-/** Guarda una generación y devuelve {id, slug}. */
+/**
+ * Guarda una generación (bajo withTenant; consultant_id lo pone el GUC).
+ * `slug` debe venir YA único — resuélvelo antes con uniqueSlug() bajo system scope.
+ */
 export async function saveGeneration(input: {
   sessionId: string;
   url: string;
@@ -103,9 +74,7 @@ export async function saveGeneration(input: {
   /** Si true, la web nace publicada (sin paywall = comportamiento legacy gratis). */
   published?: boolean;
 }): Promise<{ id: string; slug: string | null }> {
-  await ensureSchema();
-  const slug = input.slug ? await uniqueSlug(input.slug) : null;
-  const { rows } = await getPool().query<{ id: string }>(
+  const { rows } = await db().query<{ id: string }>(
     `INSERT INTO generations (session_id, url, name, design_md, html, screenshot, interactions,
        slug, brand, city, meta_title, meta_description, whatsapp, email, phone, keywords, faq, css, form_fields, published)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id`,
@@ -117,7 +86,7 @@ export async function saveGeneration(input: {
       input.html,
       input.screenshot ?? null,
       input.interactions ?? null,
-      slug,
+      input.slug ?? null,
       input.brand ?? null,
       input.city ?? null,
       input.metaTitle ?? null,
@@ -132,34 +101,29 @@ export async function saveGeneration(input: {
       input.published ?? false,
     ],
   );
-  return { id: rows[0].id, slug };
+  return { id: rows[0].id, slug: input.slug ?? null };
 }
 
-/** Lista las generaciones de una sesión (sin el HTML pesado). */
-export async function listGenerations(
-  sessionId: string,
-  limit = 50,
-): Promise<GenerationListItem[]> {
-  await ensureSchema();
-  const { rows } = await getPool().query<GenerationListItem>(
+/** Lista las generaciones del tenant del contexto (sin el HTML pesado). */
+export async function listGenerations(limit = 50): Promise<GenerationListItem[]> {
+  const { rows } = await db().query<GenerationListItem>(
     `SELECT id, url, name, screenshot, created_at AS "createdAt"
-     FROM generations WHERE session_id = $1
-     ORDER BY created_at DESC LIMIT $2`,
-    [sessionId, limit],
+     FROM generations
+     ORDER BY created_at DESC LIMIT $1`,
+    [limit],
   );
   return rows;
 }
 
 /**
- * Lista las generaciones para la galería pública. Solo webs ACTIVAS (publicadas + dueño
- * con suscripción, o legacy) cuando se aplica el paywall. Sin filtro de sesión.
+ * Galería pública (usar bajo withSystemContext). Solo webs ACTIVAS (publicadas +
+ * dueño con suscripción, o legacy) cuando se aplica el paywall.
  */
 export async function listAllGenerations(
   limit = 60,
   enforcePaywall = false,
 ): Promise<GenerationListItem[]> {
-  await ensureSchema();
-  const { rows } = await getPool().query<GenerationListItem>(
+  const { rows } = await db().query<GenerationListItem>(
     `SELECT g.id, g.url, g.name, g.screenshot, g.slug, g.created_at AS "createdAt"
      FROM generations g
      LEFT JOIN subscriptions s ON s.session_id = g.session_id
@@ -171,10 +135,10 @@ export async function listAllGenerations(
 }
 
 /**
- * Cláusula del gate de publicación para usar en queries públicas. Una web se sirve si
- * está `published` y, cuando se aplica el paywall, su dueño (session_id) tiene suscripción
- * activa O nunca pasó por subscriptions (legacy público). `g` y `s` son los alias de
- * generations y del LEFT JOIN subscriptions. Cuando enforce=false, solo exige published.
+ * Cláusula del gate de publicación para queries públicas. Una web se sirve si
+ * está `published` y, cuando se aplica el paywall, su dueño tiene suscripción
+ * activa O nunca pasó por subscriptions (legacy público). `g` y `s` son los
+ * alias de generations y del LEFT JOIN subscriptions.
  */
 function publishGate(enforce: boolean, g = "g", s = "s"): string {
   if (!enforce) return `${g}.published = true`;
@@ -185,7 +149,7 @@ function publishGate(enforce: boolean, g = "g", s = "s"): string {
   )`;
 }
 
-/** Página pública por SLUG (para /p/[slug]). Busca solo por slug. */
+/** Página pública por SLUG para /p/[slug] (usar bajo withSystemContext). */
 export async function getPublicGenerationBySlug(
   slug: string,
   enforcePaywall = false,
@@ -206,8 +170,7 @@ export async function getPublicGenerationBySlug(
   css: string | null;
   formFields: string[] | null;
 } | null> {
-  await ensureSchema();
-  const { rows } = await getPool().query<{
+  const { rows } = await db().query<{
     id: string;
     slug: string | null;
     url: string;
@@ -254,33 +217,27 @@ function safeJsonArray<T>(s: string | null): T[] | null {
 }
 
 /**
- * Busca una generación existente del MISMO consultor (sessionId) por marca (+ ciudad).
- * Anti-duplicado POR USUARIO: un consultor no regenera su propia marca+ciudad (ahorra
- * tokens, evita confusión), pero consultores distintos SÍ pueden tener cada uno su
- * propia página de la misma marca+ciudad — cada una con su slug único y su contacto.
- * La comparación usa normalizeKey (sin acentos ni puntuación) para que "McDonald's",
- * "McDonalds" y "mcdonald s" cuenten como la misma marca. El filtrado se hace en memoria
- * (volumen por sesión es bajo). city vacía ⇒ coincide con registros sin ciudad o de la
- * misma ciudad normalizada.
+ * Busca una generación existente del MISMO consultor por marca (+ ciudad).
+ * Anti-duplicado POR TENANT (RLS limita al contexto): un consultor no regenera
+ * su propia marca+ciudad, pero consultores distintos SÍ pueden tener cada uno la
+ * suya. Comparación con normalizeKey (sin acentos ni puntuación); el filtrado se
+ * hace en memoria (volumen por tenant es bajo).
  */
 export async function findGenerationByBrandCity(
   brand: string,
   city: string | null,
-  sessionId: string,
 ): Promise<{ id: string; slug: string | null } | null> {
-  await ensureSchema();
   const bKey = normalizeKey(brand);
   if (!bKey) return null;
   const cKey = normalizeKey(city);
-  const { rows } = await getPool().query<{
+  const { rows } = await db().query<{
     id: string;
     slug: string | null;
     brand: string | null;
     city: string | null;
   }>(
     `SELECT id, slug, brand, city FROM generations
-     WHERE brand IS NOT NULL AND session_id = $1 ORDER BY created_at ASC`,
-    [sessionId],
+     WHERE brand IS NOT NULL ORDER BY created_at ASC`,
   );
   const match = rows.find(
     (r) => normalizeKey(r.brand) === bKey && normalizeKey(r.city) === cKey,
@@ -288,22 +245,20 @@ export async function findGenerationByBrandCity(
   return match ? { id: match.id, slug: match.slug } : null;
 }
 
-/** Cuenta todas las generaciones (stat real "brands in registry"). */
+/** Cuenta todas las generaciones (stat público "brands in registry"; bajo withSystemContext). */
 export async function countAllGenerations(): Promise<number> {
-  await ensureSchema();
-  const { rows } = await getPool().query<{ count: string }>(
+  const { rows } = await db().query<{ count: string }>(
     `SELECT COUNT(*)::text AS count FROM generations`,
   );
   return Number(rows[0]?.count ?? 0);
 }
 
-/** Obtiene una generación por id SIN verificar sesión (vista pública /p/[id]). Aplica gate. */
+/** Generación por id para la vista pública /p/[id] (bajo withSystemContext). Aplica gate. */
 export async function getPublicGeneration(
   id: string,
   enforcePaywall = false,
 ): Promise<GenerationRecord | null> {
-  await ensureSchema();
-  const { rows } = await getPool().query<GenerationRecord & { slug: string | null }>(
+  const { rows } = await db().query<GenerationRecord & { slug: string | null }>(
     `SELECT g.id, g.session_id AS "sessionId", g.url, g.name, g.design_md AS "designMd",
             g.html, g.screenshot, g.interactions, g.slug, g.created_at AS "createdAt"
      FROM generations g
@@ -315,42 +270,35 @@ export async function getPublicGeneration(
 }
 
 /**
- * Marca una web como publicada. Filtra por session_id: el dueño solo puede publicar lo
- * suyo (nunca una web ajena). Devuelve true si actualizó una fila.
+ * Marca una web como publicada. RLS garantiza que el tenant solo publica lo
+ * suyo. Devuelve true si actualizó una fila.
  */
-export async function publishGeneration(slug: string, sessionId: string): Promise<boolean> {
-  await ensureSchema();
-  const { rowCount } = await getPool().query(
-    `UPDATE generations SET published = true WHERE slug = $1 AND session_id = $2`,
-    [slug, sessionId],
+export async function publishGeneration(slug: string): Promise<boolean> {
+  const { rowCount } = await db().query(
+    `UPDATE generations SET published = true WHERE slug = $1`,
+    [slug],
   );
   return (rowCount ?? 0) > 0;
 }
 
-/** Devuelve si la web del slug pertenece a la sesión y su estado de publicación. */
+/** Devuelve si la web del slug pertenece al tenant y su estado de publicación. */
 export async function getOwnGenerationBySlug(
   slug: string,
-  sessionId: string,
 ): Promise<{ slug: string; published: boolean } | null> {
-  await ensureSchema();
-  const { rows } = await getPool().query<{ slug: string; published: boolean }>(
-    `SELECT slug, published FROM generations WHERE slug = $1 AND session_id = $2 LIMIT 1`,
-    [slug, sessionId],
+  const { rows } = await db().query<{ slug: string; published: boolean }>(
+    `SELECT slug, published FROM generations WHERE slug = $1 LIMIT 1`,
+    [slug],
   );
   return rows[0] ?? null;
 }
 
-/** Obtiene una generación completa (verificando que pertenece a la sesión). */
-export async function getGeneration(
-  id: string,
-  sessionId: string,
-): Promise<GenerationRecord | null> {
-  await ensureSchema();
-  const { rows } = await getPool().query<GenerationRecord>(
+/** Obtiene una generación completa del tenant del contexto. */
+export async function getGeneration(id: string): Promise<GenerationRecord | null> {
+  const { rows } = await db().query<GenerationRecord>(
     `SELECT id, session_id AS "sessionId", url, name, design_md AS "designMd",
             html, screenshot, interactions, created_at AS "createdAt"
-     FROM generations WHERE id = $1 AND session_id = $2`,
-    [id, sessionId],
+     FROM generations WHERE id = $1`,
+    [id],
   );
   return rows[0] ?? null;
 }

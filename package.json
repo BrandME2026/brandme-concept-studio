@@ -8,19 +8,26 @@
     "build": "cross-env NODE_ENV=production next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run --project unit",
+    "test:watch": "vitest --project unit",
+    "test:db": "vitest run --project db",
+    "test:e2e": "playwright test -c e2e-validator",
+    "test:all": "vitest run",
+    "db:up": "docker compose up -d --wait db-test",
+    "db:down": "docker compose down -v",
+    "db:migrate": "tsx scripts/db-migrate.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.199",
     "@openrouter/ai-sdk-provider": "^2.9.0",
     "ai": "^6.0.197",
+    "drizzle-orm": "^0.45.2",
     "firebase": "^12.14.0",
     "ipaddr.js": "^2.4.0",
     "next": "16.2.7",
     "node-vibrant": "^4.0.4",
     "pg": "^8.21.0",
-    "playwright": "^1.60.0",
+    "playwright": "^1.61.1",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-markdown": "^10.1.0",
@@ -29,6 +36,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -38,10 +46,12 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.2",
     "cross-env": "^10.1.0",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.0",
     "typescript": "^5",
     "vitest": "^4.1.8"
   }

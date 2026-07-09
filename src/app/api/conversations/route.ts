@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { getSessionId } from "@/lib/session";
+import { readSessionId } from "@/lib/session";
 import { createConversation, listConversations } from "@/lib/db/conversations";
 import { isDbConfigured } from "@/lib/db/client";
+import { withTenant } from "@/lib/db/tenant-context";
+import { tenantRoute } from "@/lib/api/tenant-route";
 
 export const runtime = "nodejs";
 
-/** Lista las conversaciones de la sesión. */
-export async function GET() {
-  if (!isDbConfigured()) return NextResponse.json({ success: true, data: [] });
+/** Lista las conversaciones del consultor (tenant de la sesión). */
+const getHandler = tenantRoute(async (_req, _ctx, { consultantId }) => {
   try {
-    const sessionId = await getSessionId();
-    const items = await listConversations(sessionId);
+    const items = await withTenant(consultantId, () => listConversations());
     return NextResponse.json({ success: true, data: items });
   } catch (err) {
     console.error("[conversations] fallo listando", err);
@@ -19,16 +19,18 @@ export async function GET() {
       { status: 500 },
     );
   }
+});
+
+export async function GET(req: Request, ctx: unknown) {
+  if (!isDbConfigured()) return NextResponse.json({ success: true, data: [] });
+  return getHandler(req, ctx);
 }
 
 /** Crea una conversación nueva y devuelve su id. */
-export async function POST() {
-  if (!isDbConfigured()) {
-    return NextResponse.json({ success: true, data: { id: null } });
-  }
+const postHandler = tenantRoute(async (_req, _ctx, { consultantId }) => {
   try {
-    const sessionId = await getSessionId();
-    const id = await createConversation(sessionId);
+    const sessionId = (await readSessionId())!; // tenantRoute garantiza cookie
+    const id = await withTenant(consultantId, () => createConversation(sessionId));
     return NextResponse.json({ success: true, data: { id } });
   } catch (err) {
     console.error("[conversations] fallo creando", err);
@@ -37,4 +39,11 @@ export async function POST() {
       { status: 500 },
     );
   }
+});
+
+export async function POST(req: Request, ctx: unknown) {
+  if (!isDbConfigured()) {
+    return NextResponse.json({ success: true, data: { id: null } });
+  }
+  return postHandler(req, ctx);
 }

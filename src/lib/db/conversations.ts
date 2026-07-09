@@ -1,4 +1,11 @@
-import { getPool } from "./client";
+import { db } from "./tenant-context";
+
+/**
+ * Conversaciones del consultor. El aislamiento lo pone RLS vía el contexto
+ * (withTenant en la ruta): aquí ya NO se filtra por session_id — la columna se
+ * conserva solo como dato de trazabilidad. Las funciones "public*" se usan bajo
+ * withSystemContext (superficies públicas /p/[id], galería).
+ */
 
 export interface ConversationRecord {
   id: string;
@@ -20,80 +27,41 @@ export interface ConversationListItem {
   updatedAt: string;
 }
 
-let schemaReady = false;
-
-async function ensureSchema(): Promise<void> {
-  if (schemaReady) return;
-  await getPool().query(`
-    CREATE TABLE IF NOT EXISTS conversations (
-      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      session_id     TEXT NOT NULL,
-      title          TEXT NOT NULL DEFAULT 'Nueva conversación',
-      messages       JSONB NOT NULL DEFAULT '[]'::jsonb,
-      url            TEXT,
-      generated_html TEXT,
-      design_md      TEXT,
-      name           TEXT,
-      screenshot     TEXT,
-      created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS idx_conversations_session
-      ON conversations (session_id, updated_at DESC);
-    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS slug TEXT;
-    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS brand TEXT;
-    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS city TEXT;
-    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS meta_title TEXT;
-    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS meta_description TEXT;
-  `);
-  schemaReady = true;
-}
-
-/** Crea una conversación vacía y devuelve su id. */
+/** Crea una conversación vacía y devuelve su id (consultant_id lo pone el GUC del contexto). */
 export async function createConversation(sessionId: string): Promise<string> {
-  await ensureSchema();
-  const { rows } = await getPool().query<{ id: string }>(
+  const { rows } = await db().query<{ id: string }>(
     `INSERT INTO conversations (session_id) VALUES ($1) RETURNING id`,
     [sessionId],
   );
   return rows[0].id;
 }
 
-/** Lista las conversaciones de una sesión (sin payload pesado). */
-export async function listConversations(
-  sessionId: string,
-  limit = 50,
-): Promise<ConversationListItem[]> {
-  await ensureSchema();
-  const { rows } = await getPool().query<ConversationListItem>(
+/** Lista las conversaciones del tenant del contexto (sin payload pesado). */
+export async function listConversations(limit = 50): Promise<ConversationListItem[]> {
+  const { rows } = await db().query<ConversationListItem>(
     `SELECT id, title, updated_at AS "updatedAt"
-     FROM conversations WHERE session_id = $1
-     ORDER BY updated_at DESC LIMIT $2`,
-    [sessionId, limit],
+     FROM conversations
+     ORDER BY updated_at DESC LIMIT $1`,
+    [limit],
   );
   return rows;
 }
 
-/** Obtiene una conversación completa (verificando que pertenece a la sesión). */
-export async function getConversation(
-  id: string,
-  sessionId: string,
-): Promise<ConversationRecord | null> {
-  await ensureSchema();
-  const { rows } = await getPool().query<ConversationRecord>(
+/** Obtiene una conversación completa (RLS garantiza que es del tenant). */
+export async function getConversation(id: string): Promise<ConversationRecord | null> {
+  const { rows } = await db().query<ConversationRecord>(
     `SELECT id, session_id AS "sessionId", title, messages, url,
             generated_html AS "generatedHtml", design_md AS "designMd", name,
             screenshot, created_at AS "createdAt", updated_at AS "updatedAt"
-     FROM conversations WHERE id = $1 AND session_id = $2`,
-    [id, sessionId],
+     FROM conversations WHERE id = $1`,
+    [id],
   );
   return rows[0] ?? null;
 }
 
-/** Guarda/actualiza una conversación. Solo toca los campos provistos. */
+/** Guarda/actualiza una conversación del tenant. Solo toca los campos provistos. */
 export async function saveConversation(
   id: string,
-  sessionId: string,
   patch: {
     title?: string;
     messages?: unknown[];
@@ -109,26 +77,24 @@ export async function saveConversation(
     metaDescription?: string | null;
   },
 ): Promise<void> {
-  await ensureSchema();
-  await getPool().query(
+  await db().query(
     `UPDATE conversations SET
-       title            = COALESCE($3, title),
-       messages         = COALESCE($4::jsonb, messages),
-       url              = COALESCE($5, url),
-       generated_html   = COALESCE($6, generated_html),
-       design_md        = COALESCE($7, design_md),
-       name             = COALESCE($8, name),
-       screenshot       = COALESCE($9, screenshot),
-       slug             = COALESCE($10, slug),
-       brand            = COALESCE($11, brand),
-       city             = COALESCE($12, city),
-       meta_title       = COALESCE($13, meta_title),
-       meta_description = COALESCE($14, meta_description),
+       title            = COALESCE($2, title),
+       messages         = COALESCE($3::jsonb, messages),
+       url              = COALESCE($4, url),
+       generated_html   = COALESCE($5, generated_html),
+       design_md        = COALESCE($6, design_md),
+       name             = COALESCE($7, name),
+       screenshot       = COALESCE($8, screenshot),
+       slug             = COALESCE($9, slug),
+       brand            = COALESCE($10, brand),
+       city             = COALESCE($11, city),
+       meta_title       = COALESCE($12, meta_title),
+       meta_description = COALESCE($13, meta_description),
        updated_at       = now()
-     WHERE id = $1 AND session_id = $2`,
+     WHERE id = $1`,
     [
       id,
-      sessionId,
       patch.title ?? null,
       patch.messages ? JSON.stringify(patch.messages) : null,
       patch.url ?? null,
@@ -145,12 +111,11 @@ export async function saveConversation(
   );
 }
 
-/** Página generada de una conversación, por id, SIN sesión (para compartir /p/[id]). */
+/** Página generada por id, superficie pública /p/[id] (usar bajo withSystemContext). */
 export async function getPublicConversationPage(
   id: string,
 ): Promise<{ id: string; url: string | null; name: string | null; html: string } | null> {
-  await ensureSchema();
-  const { rows } = await getPool().query<{
+  const { rows } = await db().query<{
     id: string;
     url: string | null;
     name: string | null;
@@ -178,10 +143,9 @@ export interface PublicPage {
   metaDescription: string | null;
 }
 
-/** Página generada de una conversación por SLUG, SIN sesión (para /p/[slug]). */
+/** Página generada por SLUG, superficie pública /p/[slug] (usar bajo withSystemContext). */
 export async function getPublicConversationBySlug(slug: string): Promise<PublicPage | null> {
-  await ensureSchema();
-  const { rows } = await getPool().query<PublicPage & { html: string | null }>(
+  const { rows } = await db().query<PublicPage & { html: string | null }>(
     `SELECT id, slug, url, name, generated_html AS html, screenshot,
             brand, city, meta_title AS "metaTitle", meta_description AS "metaDescription"
      FROM conversations WHERE slug = $1 AND generated_html IS NOT NULL LIMIT 1`,
@@ -192,11 +156,7 @@ export async function getPublicConversationBySlug(slug: string): Promise<PublicP
   return { ...r, html: r.html };
 }
 
-/** Borra una conversación de la sesión. */
-export async function deleteConversation(id: string, sessionId: string): Promise<void> {
-  await ensureSchema();
-  await getPool().query(
-    `DELETE FROM conversations WHERE id = $1 AND session_id = $2`,
-    [id, sessionId],
-  );
+/** Borra una conversación del tenant. */
+export async function deleteConversation(id: string): Promise<void> {
+  await db().query(`DELETE FROM conversations WHERE id = $1`, [id]);
 }

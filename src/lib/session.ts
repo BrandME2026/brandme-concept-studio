@@ -1,25 +1,15 @@
 import { cookies } from "next/headers";
-import { randomUUID } from "node:crypto";
 
-const COOKIE = "bmc_session";
-const ONE_YEAR = 60 * 60 * 24 * 365;
+export const SESSION_COOKIE = "bmc_session";
+export const SESSION_MAX_AGE = 60 * 60 * 24 * 365; // 1 año
 
 /**
- * Devuelve el id de sesión anónima (cookie). Si no existe, crea uno nuevo.
- * Identifica el historial por navegador sin necesidad de login.
+ * Lee el id de sesión anónima (cookie) SIN crearlo. El acuñado vive en
+ * src/middleware.ts y ocurre solo en navegaciones de documento: una llamada a
+ * API sin cookie NO gana sesión — las rutas tenant responden 401 (WO-3,
+ * AC-PF-001.4) en vez de fabricar una identidad fantasma.
  */
-export async function getSessionId(): Promise<string> {
+export async function readSessionId(): Promise<string | null> {
   const store = await cookies();
-  const existing = store.get(COOKIE)?.value;
-  if (existing) return existing;
-
-  const id = randomUUID();
-  store.set(COOKIE, id, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: ONE_YEAR,
-    path: "/",
-  });
-  return id;
+  return store.get(SESSION_COOKIE)?.value ?? null;
 }

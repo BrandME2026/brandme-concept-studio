@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/client";
 import { isDbConfigured } from "@/lib/db/client";
 import { applySubscriptionEvent } from "@/lib/db/subscriptions";
+import { withSystemContext } from "@/lib/db/tenant-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,15 +43,18 @@ export async function POST(req: Request) {
         const subscriptionId =
           typeof s.subscription === "string" ? s.subscription : s.subscription?.id ?? null;
         if (customerId && subscriptionId) {
-          // Recuperar la subscription para status + period_end fiables.
+          // Recuperar la subscription para status + period_end fiables (red externa
+          // FUERA del contexto de DB).
           const sub = await getStripe().subscriptions.retrieve(subscriptionId);
-          await applySubscriptionEvent({
-            customerId,
-            subscriptionId,
-            status: sub.status,
-            currentPeriodEnd: periodEnd(sub),
-            email: s.customer_details?.email ?? null,
-          });
+          await withSystemContext("stripe-webhook", () =>
+            applySubscriptionEvent({
+              customerId,
+              subscriptionId,
+              status: sub.status,
+              currentPeriodEnd: periodEnd(sub),
+              email: s.customer_details?.email ?? null,
+            }),
+          );
         }
         break;
       }
@@ -60,12 +64,14 @@ export async function POST(req: Request) {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
         if (customerId) {
-          await applySubscriptionEvent({
-            customerId,
-            subscriptionId: sub.id,
-            status: sub.status,
-            currentPeriodEnd: periodEnd(sub),
-          });
+          await withSystemContext("stripe-webhook", () =>
+            applySubscriptionEvent({
+              customerId,
+              subscriptionId: sub.id,
+              status: sub.status,
+              currentPeriodEnd: periodEnd(sub),
+            }),
+          );
         }
         break;
       }

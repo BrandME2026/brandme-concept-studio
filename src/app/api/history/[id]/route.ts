@@ -1,24 +1,17 @@
 import { NextResponse } from "next/server";
-import { getSessionId } from "@/lib/session";
 import { getGeneration } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
+import { withTenant } from "@/lib/db/tenant-context";
+import { tenantRoute } from "@/lib/api/tenant-route";
 
 export const runtime = "nodejs";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  if (!isDbConfigured()) {
-    return NextResponse.json(
-      { success: false, error: { code: "NO_DB", message: "Historial no disponible" } },
-      { status: 404 },
-    );
-  }
+type Ctx = { params: Promise<{ id: string }> };
+
+const getHandler = tenantRoute<Ctx>(async (_req, { params }, { consultantId }) => {
   try {
     const { id } = await params;
-    const sessionId = await getSessionId();
-    const record = await getGeneration(id, sessionId);
+    const record = await withTenant(consultantId, () => getGeneration(id));
     if (!record) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "No encontrado" } },
@@ -33,4 +26,14 @@ export async function GET(
       { status: 500 },
     );
   }
+});
+
+export async function GET(req: Request, ctx: Ctx) {
+  if (!isDbConfigured()) {
+    return NextResponse.json(
+      { success: false, error: { code: "NO_DB", message: "Historial no disponible" } },
+      { status: 404 },
+    );
+  }
+  return getHandler(req, ctx);
 }

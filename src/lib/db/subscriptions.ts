@@ -1,12 +1,14 @@
-import { getPool } from "./client";
+import { db } from "./tenant-context";
 
 /**
- * Suscripciones de pago. NO hay login: la identidad es la cookie de sesión
- * (`bmc_session`), así que una suscripción cuelga del `session_id`. El webhook de
- * Stripe llega con el `customer`, por eso guardamos el mapping en ambos sentidos.
+ * Suscripciones de pago. La fila cuelga históricamente del `session_id` (PK,
+ * se conserva por EP-01) pero el TENANT es consultant_id: un consultant puede
+ * acumular varias filas (una por sesión que pasó por checkout). Las lecturas
+ * tenant-scoped van por RLS; el webhook de Stripe llega sin tenant y corre bajo
+ * withSystemContext resolviendo por stripe_customer_id.
  *
- * Estados que cuentan como "activa" para el gate de publicación: 'active' y 'trialing',
- * además de `current_period_end` en el futuro (defensa si un evento quedó stale).
+ * Estados que cuentan como "activa" para el gate de publicación: 'active' y
+ * 'trialing', con `current_period_end` NULL o en el futuro.
  */
 
 export interface SubscriptionRecord {
@@ -18,64 +20,35 @@ export interface SubscriptionRecord {
   email: string | null;
 }
 
-const ACTIVE_STATUSES = new Set(["active", "trialing"]);
-
-let schemaReady = false;
-
-async function ensureSchema(): Promise<void> {
-  if (schemaReady) return;
-  await getPool().query(`
-    CREATE TABLE IF NOT EXISTS subscriptions (
-      session_id             TEXT PRIMARY KEY,
-      stripe_customer_id     TEXT NOT NULL,
-      stripe_subscription_id TEXT,
-      status                 TEXT NOT NULL DEFAULT 'incomplete',
-      current_period_end     TIMESTAMPTZ,
-      email                  TEXT,
-      created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_customer
-      ON subscriptions (stripe_customer_id);
-    CREATE INDEX IF NOT EXISTS idx_subscriptions_subid
-      ON subscriptions (stripe_subscription_id) WHERE stripe_subscription_id IS NOT NULL;
-  `);
-  schemaReady = true;
-}
-
-/** Fila de la sesión (o null si nunca pasó por checkout). */
-export async function getSubscriptionBySession(
-  sessionId: string,
-): Promise<SubscriptionRecord | null> {
-  await ensureSchema();
-  const { rows } = await getPool().query<SubscriptionRecord>(
+/** Fila más reciente del tenant del contexto (o null si nunca pasó por checkout). */
+export async function getSubscriptionForTenant(): Promise<SubscriptionRecord | null> {
+  const { rows } = await db().query<SubscriptionRecord>(
     `SELECT session_id AS "sessionId", stripe_customer_id AS "stripeCustomerId",
             stripe_subscription_id AS "stripeSubscriptionId", status,
             current_period_end AS "currentPeriodEnd", email
-     FROM subscriptions WHERE session_id = $1`,
-    [sessionId],
+     FROM subscriptions
+     ORDER BY updated_at DESC
+     LIMIT 1`,
   );
   return rows[0] ?? null;
 }
 
-/** session_id asociado a un customer de Stripe (para el webhook). */
+/** session_id asociado a un customer de Stripe (webhook; usar bajo withSystemContext). */
 export async function getSessionByCustomer(customerId: string): Promise<string | null> {
-  await ensureSchema();
-  const { rows } = await getPool().query<{ sessionId: string }>(
+  const { rows } = await db().query<{ sessionId: string }>(
     `SELECT session_id AS "sessionId" FROM subscriptions WHERE stripe_customer_id = $1`,
     [customerId],
   );
   return rows[0]?.sessionId ?? null;
 }
 
-/** Crea/actualiza el mapping sesión↔customer al iniciar el checkout. Idempotente. */
+/** Crea/actualiza el mapping sesión↔customer al iniciar el checkout (bajo withTenant). */
 export async function upsertCustomer(input: {
   sessionId: string;
   customerId: string;
   email?: string | null;
 }): Promise<void> {
-  await ensureSchema();
-  await getPool().query(
+  await db().query(
     `INSERT INTO subscriptions (session_id, stripe_customer_id, email, updated_at)
      VALUES ($1, $2, $3, now())
      ON CONFLICT (session_id) DO UPDATE
@@ -87,9 +60,9 @@ export async function upsertCustomer(input: {
 }
 
 /**
- * Sincroniza el estado de la suscripción desde un evento de Stripe. Resuelve la sesión
- * por customer. Idempotente: descarta el evento si su `current_period_end` es anterior
- * al guardado (eventos fuera de orden).
+ * Sincroniza el estado de la suscripción desde un evento de Stripe (webhook;
+ * usar bajo withSystemContext). Resuelve por customer. Idempotente: descarta el
+ * evento si su `current_period_end` es anterior al guardado (fuera de orden).
  */
 export async function applySubscriptionEvent(input: {
   customerId: string;
@@ -98,9 +71,8 @@ export async function applySubscriptionEvent(input: {
   currentPeriodEnd: Date | null;
   email?: string | null;
 }): Promise<void> {
-  await ensureSchema();
   const periodEnd = input.currentPeriodEnd ? input.currentPeriodEnd.toISOString() : null;
-  await getPool().query(
+  await db().query(
     `UPDATE subscriptions
        SET stripe_subscription_id = $2,
            status = $3,
@@ -115,18 +87,22 @@ export async function applySubscriptionEvent(input: {
   );
 }
 
-/** true si la sesión tiene una suscripción activa (status + period_end futuro). */
-export async function isSubscriptionActive(sessionId: string): Promise<boolean> {
-  const sub = await getSubscriptionBySession(sessionId);
-  if (!sub) return false;
-  if (!ACTIVE_STATUSES.has(sub.status)) return false;
-  if (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd).getTime() <= Date.now()) {
-    return false;
-  }
-  return true;
+/** true si el tenant del contexto tiene ALGUNA suscripción activa. */
+export async function isSubscriptionActive(): Promise<boolean> {
+  const { rows } = await db().query<{ active: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM subscriptions
+       WHERE status IN ('active', 'trialing')
+         AND (current_period_end IS NULL OR current_period_end > now())
+     ) AS active`,
+  );
+  return rows[0].active;
 }
 
-/** true si la sesión NUNCA pasó por subscriptions (para la regla legacy del gate). */
-export async function hasAnySubscriptionRow(sessionId: string): Promise<boolean> {
-  return (await getSubscriptionBySession(sessionId)) !== null;
+/** true si el tenant del contexto pasó alguna vez por subscriptions (regla legacy del gate). */
+export async function hasAnySubscriptionRow(): Promise<boolean> {
+  const { rows } = await db().query<{ exists: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM subscriptions) AS exists`,
+  );
+  return rows[0].exists;
 }

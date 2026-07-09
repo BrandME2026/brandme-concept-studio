@@ -1,8 +1,11 @@
-import { getPool } from "./client";
+import { randomUUID } from "node:crypto";
+import { db } from "./tenant-context";
 
 /**
- * Leads (interesados) capturados desde las páginas públicas de franquicia. Datos REALES
- * que deja el visitante en el formulario embebido. Enlaza a la generación por slug.
+ * Leads (interesados) capturados desde las páginas públicas de franquicia. Datos
+ * REALES que deja el visitante en el formulario embebido. El visitante es
+ * anónimo: saveLead corre bajo withSystemContext y asigna el lead al consultant
+ * dueño de la página (lookup por slug). La lectura es tenant-scoped vía RLS.
  */
 export interface LeadInput {
   slug: string;
@@ -28,36 +31,31 @@ export interface LeadRecord {
   createdAt: string;
 }
 
-let schemaReady = false;
-
-async function ensureSchema(): Promise<void> {
-  if (schemaReady) return;
-  await getPool().query(`
-    CREATE TABLE IF NOT EXISTS leads (
-      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      slug        TEXT NOT NULL,
-      brand       TEXT,
-      city        TEXT,
-      name        TEXT NOT NULL,
-      phone       TEXT,
-      email       TEXT,
-      message     TEXT,
-      source      TEXT NOT NULL DEFAULT 'form',
-      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS idx_leads_slug ON leads (slug, created_at DESC);
-  `);
-  schemaReady = true;
-}
-
-/** Guarda un lead capturado en una página pública. Sin sesión (el visitante es anónimo). */
+/**
+ * Guarda un lead capturado en una página pública (usar bajo withSystemContext).
+ * El consultant_id sale del dueño del slug; slug sin generación = error (fail fast,
+ * un lead sin dueño sería dato huérfano invisible para todos).
+ */
 export async function saveLead(input: LeadInput): Promise<{ id: string }> {
-  await ensureSchema();
-  const { rows } = await getPool().query<{ id: string }>(
-    `INSERT INTO leads (slug, brand, city, name, phone, email, message, source)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+  const owner = await db().query<{ consultant_id: string }>(
+    `SELECT consultant_id FROM generations WHERE slug = $1 LIMIT 1`,
+    [input.slug],
+  );
+  const consultantId = owner.rows[0]?.consultant_id;
+  if (!consultantId) {
+    throw new Error(`saveLead: el slug "${input.slug}" no tiene generación dueña`);
+  }
+  // Sin RETURNING: la fila nueva no es VISIBLE bajo system scope (no hay
+  // system_select en leads, a propósito — mínima superficie) y RETURNING
+  // exige visibilidad SELECT. El id se genera en la app.
+  const id = randomUUID();
+  await db().query(
+    `INSERT INTO leads (id, slug, consultant_id, brand, city, name, phone, email, message, source)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
     [
+      id,
       input.slug,
+      consultantId,
       input.brand,
       input.city,
       input.name,
@@ -67,37 +65,24 @@ export async function saveLead(input: LeadInput): Promise<{ id: string }> {
       input.source,
     ],
   );
-  return { id: rows[0].id };
+  return { id };
 }
 
-/**
- * Lista los leads de las páginas que pertenecen a una sesión (el consultor). Join con
- * generations por slug + filtro de session_id → cada consultor ve solo SUS interesados.
- */
-export async function listLeadsForSession(
-  sessionId: string,
-  limit = 200,
-): Promise<LeadRecord[]> {
-  await ensureSchema();
-  const { rows } = await getPool().query<LeadRecord>(
-    `SELECT l.id, l.slug, l.brand, l.city, l.name, l.phone, l.email, l.message, l.source,
-            l.created_at AS "createdAt"
-     FROM leads l
-     JOIN generations g ON g.slug = l.slug
-     WHERE g.session_id = $1
-     ORDER BY l.created_at DESC
-     LIMIT $2`,
-    [sessionId, limit],
+/** Lista los leads del consultor del contexto. RLS filtra; ya no hace falta el join. */
+export async function listLeadsForConsultant(limit = 200): Promise<LeadRecord[]> {
+  const { rows } = await db().query<LeadRecord>(
+    `SELECT id, slug, brand, city, name, phone, email, message, source,
+            created_at AS "createdAt"
+     FROM leads
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit],
   );
   return rows;
 }
 
-/** Comprueba que un slug existe (validación antes de aceptar un lead público). */
+/** Comprueba que un slug existe (validación pública; usar bajo withSystemContext). */
 export async function slugExists(slug: string): Promise<boolean> {
-  await ensureSchema();
-  const { rows } = await getPool().query(
-    `SELECT 1 FROM generations WHERE slug = $1 LIMIT 1`,
-    [slug],
-  );
+  const { rows } = await db().query(`SELECT 1 FROM generations WHERE slug = $1 LIMIT 1`, [slug]);
   return rows.length > 0;
 }

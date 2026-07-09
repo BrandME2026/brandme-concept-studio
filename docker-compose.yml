@@ -1,0 +1,22 @@
+services:
+  # Postgres local SOLO para desarrollo y la tenant-isolation test suite (WO-3).
+  # Producción vive en Railway; este contenedor replica el modelo de roles
+  # (brandme_app sin BYPASSRLS / brandme_migrator owner) vía init-roles.sql.
+  db-test:
+    image: postgres:16-alpine
+    ports:
+      - "54329:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ./scripts/db/init-roles.sql:/docker-entrypoint-initdb.d/10-init-roles.sql:ro
+    tmpfs:
+      # Datos efímeros: la suite resetea el schema en cada corrida.
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

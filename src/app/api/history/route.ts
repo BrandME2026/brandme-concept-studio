@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
-import { getSessionId } from "@/lib/session";
 import { listGenerations } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
+import { withTenant } from "@/lib/db/tenant-context";
+import { tenantRoute } from "@/lib/api/tenant-route";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  if (!isDbConfigured()) {
-    return NextResponse.json({ success: true, data: [] });
-  }
+const getHandler = tenantRoute(async (_req, _ctx, { consultantId }) => {
   try {
-    const sessionId = await getSessionId();
-    const items = await listGenerations(sessionId);
+    const items = await withTenant(consultantId, () => listGenerations());
     return NextResponse.json({ success: true, data: items });
   } catch (err) {
     console.error("[history] fallo listando", err);
@@ -20,4 +17,11 @@ export async function GET() {
       { status: 500 },
     );
   }
+});
+
+export async function GET(req: Request, ctx: unknown) {
+  if (!isDbConfigured()) {
+    return NextResponse.json({ success: true, data: [] });
+  }
+  return getHandler(req, ctx);
 }

@@ -1,5 +1,6 @@
 import { getPublicGenerationBySlug } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
+import { withSystemContext } from "@/lib/db/tenant-context";
 import { isStripeConfigured } from "@/lib/stripe/client";
 import { buildLlmsMd } from "@/lib/seo/build-llms-md";
 import type { PublicDocMeta } from "@/lib/seo/build-public-doc";
@@ -32,7 +33,9 @@ export async function GET(
 
   const enforce = isStripeConfigured();
   try {
-    const g = await getPublicGenerationBySlug(slug, enforce);
+    const g = await withSystemContext("llms-txt-pagina", () =>
+      getPublicGenerationBySlug(slug, enforce),
+    );
     if (!g) return textResponse("Not found", 404);
 
     const rec = g as Partial<{

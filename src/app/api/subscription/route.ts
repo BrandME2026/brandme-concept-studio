@@ -1,24 +1,23 @@
 import { NextResponse } from "next/server";
-import { getSessionId } from "@/lib/session";
 import { isDbConfigured } from "@/lib/db/client";
 import { isStripeConfigured } from "@/lib/stripe/client";
-import { getSubscriptionBySession, isSubscriptionActive } from "@/lib/db/subscriptions";
+import { getSubscriptionForTenant, isSubscriptionActive } from "@/lib/db/subscriptions";
+import { withTenant } from "@/lib/db/tenant-context";
+import { tenantRoute } from "@/lib/api/tenant-route";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Estado de suscripción de la sesión actual. Si Stripe/DB no están configurados,
+ * Estado de suscripción del tenant actual. Si Stripe/DB no están configurados,
  * devuelve active:false (la app degrada a "publicar gratis"; el gate no se aplica).
  */
-export async function GET() {
-  if (!isDbConfigured() || !isStripeConfigured()) {
-    return NextResponse.json({ success: true, data: { active: false, configured: false } });
-  }
+const getHandler = tenantRoute(async (_req, _ctx, { consultantId }) => {
   try {
-    const sessionId = await getSessionId();
-    const active = await isSubscriptionActive(sessionId);
-    const sub = await getSubscriptionBySession(sessionId);
+    const { active, sub } = await withTenant(consultantId, async () => ({
+      active: await isSubscriptionActive(),
+      sub: await getSubscriptionForTenant(),
+    }));
     return NextResponse.json({
       success: true,
       data: {
@@ -32,4 +31,11 @@ export async function GET() {
     console.error("[subscription] fallo consultando estado", err);
     return NextResponse.json({ success: true, data: { active: false, configured: true } });
   }
+});
+
+export async function GET(req: Request, ctx: unknown) {
+  if (!isDbConfigured() || !isStripeConfigured()) {
+    return NextResponse.json({ success: true, data: { active: false, configured: false } });
+  }
+  return getHandler(req, ctx);
 }

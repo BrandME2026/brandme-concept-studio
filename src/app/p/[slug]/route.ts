@@ -1,6 +1,7 @@
 import { getPublicGenerationBySlug, getPublicGeneration } from "@/lib/db/history";
 import { getPublicConversationBySlug, getPublicConversationPage } from "@/lib/db/conversations";
 import { isDbConfigured } from "@/lib/db/client";
+import { withSystemContext } from "@/lib/db/tenant-context";
 import { isStripeConfigured } from "@/lib/stripe/client";
 import { buildPublicDoc, type PublicDocMeta } from "@/lib/seo/build-public-doc";
 
@@ -58,9 +59,12 @@ export async function GET(
     // Con paywall activo NO usamos el fallback de `conversations`: esa tabla no tiene gate
     // (`published`) y serviría la copia de la web saltándose el pago. Las webs viven en
     // `generations`, donde sí se aplica el gate.
-    const bySlug =
-      (await getPublicGenerationBySlug(slug, enforce)) ??
-      (enforce ? null : await getPublicConversationBySlug(slug));
+    const bySlug = await withSystemContext(
+      "pagina-publica",
+      async () =>
+        (await getPublicGenerationBySlug(slug, enforce)) ??
+        (enforce ? null : await getPublicConversationBySlug(slug)),
+    );
     if (bySlug) {
       const g = bySlug as Partial<{
         whatsapp: string | null;
@@ -88,14 +92,20 @@ export async function GET(
 
     // 2) Fallback: entró por UUID viejo. Redirigir al slug si existe, o servir directo.
     if (isUuid(slug)) {
-      const gen = await getPublicGeneration(slug, enforce);
+      const gen = await withSystemContext("pagina-publica", () =>
+        getPublicGeneration(slug, enforce),
+      );
       if (gen?.slug) {
         return Response.redirect(
           `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/p/${gen.slug}`,
           301,
         );
       }
-      const rec = gen ?? (enforce ? null : await getPublicConversationPage(slug));
+      const rec =
+        gen ??
+        (enforce
+          ? null
+          : await withSystemContext("pagina-publica", () => getPublicConversationPage(slug)));
       if (rec) {
         return htmlResponse(
           buildPublicDoc(rec.html, {

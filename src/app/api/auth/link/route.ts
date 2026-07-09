@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { getSessionId } from "@/lib/session";
+import { readSessionId } from "@/lib/session";
 import { isDbConfigured } from "@/lib/db/client";
 import { upsertUserAndLinkSession } from "@/lib/db/users";
+import { withSystemContext } from "@/lib/db/tenant-context";
 import { verifyFirebaseToken } from "@/lib/auth/verify-token";
 import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
 
@@ -9,9 +10,12 @@ export const runtime = "nodejs";
 
 /**
  * Vincula la sesión anónima actual (cookie bmc_session) con el usuario Firebase.
- * Recibe el ID token en `Authorization: Bearer <token>`, lo verifica contra las claves
- * públicas de Google, y hace upsert del usuario + el vínculo sesión↔usuario.
- * Login OPCIONAL: si no hay DB o token válido, responde sin romper (no bloquea el login).
+ * Recibe el ID token en `Authorization: Bearer <token>`, lo verifica contra las
+ * claves públicas de Google, y hace upsert del usuario + vínculo sesión↔usuario
+ * (+ merge del consultant provisional al canónico). Corre bajo
+ * withSystemContext("auth-link-merge"): toca tablas de identidad y reasigna
+ * filas entre consultants, cosa que ningún contexto tenant puede hacer.
+ * Login OPCIONAL: si no hay DB o token válido, responde sin romper.
  */
 export async function POST(req: Request) {
   const rl = rateLimit(`auth:${clientKey(req)}`, LIMITS.chat);
@@ -39,16 +43,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: { linked: false } });
   }
 
-  const sessionId = await getSessionId();
+  const sessionId = await readSessionId();
+  if (!sessionId) {
+    return NextResponse.json(
+      { success: false, error: { code: "NO_SESSION", message: "No autorizado" } },
+      { status: 401 },
+    );
+  }
+
   try {
-    await upsertUserAndLinkSession(
-      {
-        id: verified.uid,
-        email: verified.email,
-        displayName: verified.name,
-        photoUrl: verified.picture,
-      },
-      sessionId,
+    await withSystemContext("auth-link-merge", () =>
+      upsertUserAndLinkSession(
+        {
+          id: verified.uid,
+          email: verified.email,
+          displayName: verified.name,
+          photoUrl: verified.picture,
+        },
+        sessionId,
+      ),
     );
     return NextResponse.json({ success: true, data: { linked: true } });
   } catch (e) {

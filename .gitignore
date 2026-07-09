@@ -44,3 +44,7 @@ next-env.d.ts
 
 # claude code runtime
 .claude/scheduled_tasks.lock
+
+# Artifacts de Playwright (e2e-validator)
+test-results/
+playwright-report/

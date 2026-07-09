@@ -1,29 +1,34 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { saveLead, slugExists, listLeadsForSession } from "@/lib/db/leads";
+import { saveLead, slugExists, listLeadsForConsultant } from "@/lib/db/leads";
 import { isDbConfigured } from "@/lib/db/client";
-import { getSessionId } from "@/lib/session";
+import { withSystemContext, withTenant } from "@/lib/db/tenant-context";
+import { tenantRoute } from "@/lib/api/tenant-route";
 import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Lista los leads de las páginas del consultor (sesión actual). Privado. */
-export async function GET() {
-  if (!isDbConfigured()) {
-    return NextResponse.json({ success: true, data: [] });
-  }
+/** Lista los leads de las páginas del consultor (tenant de la sesión). Privado. */
+const getHandler = tenantRoute(async (_req, _ctx, { consultantId }) => {
   try {
-    const sessionId = await getSessionId();
-    const leads = await listLeadsForSession(sessionId);
+    const leads = await withTenant(consultantId, () => listLeadsForConsultant());
     return NextResponse.json({ success: true, data: leads });
   } catch (err) {
     console.error("[leads] fallo listando", err);
     return NextResponse.json({ success: true, data: [] });
   }
+});
+
+export async function GET(req: Request, ctx: unknown) {
+  if (!isDbConfigured()) {
+    return NextResponse.json({ success: true, data: [] });
+  }
+  return getHandler(req, ctx);
 }
 
-// Captura de interesados desde una página pública. SIN sesión (el visitante es anónimo).
+// Captura de interesados desde una página pública. SIN sesión (el visitante es
+// anónimo): corre bajo withSystemContext y el lead se asigna al dueño del slug.
 const leadSchema = z.object({
   slug: z.string().min(1).max(80),
   name: z.string().trim().min(1).max(120),
@@ -75,17 +80,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (!(await slugExists(data.slug))) return fail("NOT_FOUND", "Página no encontrada", 404);
-    await saveLead({
-      slug: data.slug,
-      brand: null,
-      city: null,
-      name: data.name,
-      phone: data.phone || null,
-      email: data.email || null,
-      message: data.message || null,
-      source: data.source,
+    const saved = await withSystemContext("lead-capture", async () => {
+      if (!(await slugExists(data.slug))) return false;
+      await saveLead({
+        slug: data.slug,
+        brand: null,
+        city: null,
+        name: data.name,
+        phone: data.phone || null,
+        email: data.email || null,
+        message: data.message || null,
+        source: data.source,
+      });
+      return true;
     });
+    if (!saved) return fail("NOT_FOUND", "Página no encontrada", 404);
     return NextResponse.json({ success: true, data: { ok: true } });
   } catch (err) {
     console.error("[leads] fallo guardando", err);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { chatModel, assertOpenRouterConfigured } from "@/lib/ai/openrouter";
 import { saveLead, slugExists } from "@/lib/db/leads";
 import { isDbConfigured } from "@/lib/db/client";
+import { withSystemContext } from "@/lib/db/tenant-context";
 import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
 
 // Anti-payload-bomb: límites de la conversación (cada mensaje cuesta tokens reales).
@@ -88,17 +89,21 @@ export async function POST(req: Request) {
           if (!isDbConfigured()) return { ok: false };
           if (!phone && !email) return { ok: false, reason: "sin contacto" };
           try {
-            if (!(await slugExists(slug))) return { ok: false, reason: "slug inválido" };
-            await saveLead({
-              slug,
-              brand: brand || null,
-              city: city || null,
-              name,
-              phone: phone || null,
-              email: email || null,
-              message: message || null,
-              source: "agent",
+            const saved = await withSystemContext("agent-lead", async () => {
+              if (!(await slugExists(slug))) return false;
+              await saveLead({
+                slug,
+                brand: brand || null,
+                city: city || null,
+                name,
+                phone: phone || null,
+                email: email || null,
+                message: message || null,
+                source: "agent",
+              });
+              return true;
             });
+            if (!saved) return { ok: false, reason: "slug inválido" };
             return { ok: true };
           } catch (e) {
             console.error("[agent] captureLead falló", e);

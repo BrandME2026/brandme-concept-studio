@@ -200,3 +200,64 @@ Así, meter un agente/skill/servicio nuevo es **añadir un archivo y registrarlo
 - No instalamos NestJS, `@nestjs/*`, ni un contenedor de IoC.
 - No usamos decoradores de NestJS (`@Injectable`, `@Controller`…). Usamos clases TS + DI manual.
 - No forzamos la estructura donde no aporta (un endpoint trivial no necesita las 3 capas).
+
+---
+
+## Multi-tenancy con RLS (WO-3 — TenantIsolationLayer)
+
+> Implementado 2026-07-09 (WO-3 de 8090). El aislamiento de tenants es **estructural, a nivel
+> de base de datos**: políticas Postgres RLS con `FORCE` en toda tabla tenant-scoped
+> (`conversations`, `generations`, `leads`, `subscriptions`), filtrando por el GUC
+> `app.consultant_id`. Un `WHERE` olvidado ya no puede fugar datos.
+
+### Piezas
+
+| Pieza | Archivo | Qué hace |
+|---|---|---|
+| Contexto de tenant | `src/lib/db/tenant-context.ts` | `withTenant(id, fn)` (transacción + `SET LOCAL`), `withSystemContext(reason, fn)` (superficies públicas), `db()` (handle; sin contexto lanza → 401) |
+| Resolución de tenant | `src/lib/tenant.ts` | cookie `bmc_session` → `consultant_id` (auto-provisión bajo system scope) |
+| Wrapper de rutas | `src/lib/api/tenant-route.ts` | `tenantRoute(handler)`: sin sesión → 401 ANTES de tocar datos |
+| Manifiesto | `src/lib/api/route-manifest.ts` | clasificación tenant / public-system / no-db de TODA ruta; testeado |
+| Migraciones | `drizzle/*.sql` + `scripts/db-migrate.ts` | runner propio determinista; drizzle-kit configurado para generar futuras migraciones por diff de `src/lib/db/schema.ts` |
+| Suite de aislamiento | `tests/db/` (Vitest, proyecto `db`) + `e2e-validator/` (Playwright) | cero fuga A/B, 401 sin contexto, paridad pooled/direct (COV_PF_TENANT_001) |
+
+### Reglas duras
+
+1. **Nunca** importar `pg` fuera de `src/lib/db/` (regla ESLint). Todo acceso va por `db()` dentro
+   de un contexto.
+2. **Nunca** mantener un `withTenant` abierto a través de un await que no sea de DB (streaming
+   LLM, Stripe, fetch): el pool tiene `max: 5` y una transacción colgada produce inanición.
+   Bloques cortos, varios por request.
+3. `withSystemContext` NO es BYPASSRLS: cada tabla declara qué comandos permite bajo system scope
+   (ver `drizzle/0003_rls.sql`). El publishGate (pago) vive en el SQL de la app, no en políticas.
+4. El esquema cambia SOLO por migración (`pnpm db:migrate`); los `ensureSchema()` runtime se
+   retiraron. EP-01: evolución aditiva.
+
+### Roles
+
+- `brandme_app` — runtime. LOGIN, sin DDL, **NOBYPASSRLS**. `DATABASE_URL` debe apuntar aquí.
+- `brandme_migrator` — owner + **BYPASSRLS**. SOLO migraciones/tooling (`DATABASE_URL_MIGRATIONS`),
+  jamás en el request path. Sancionado por ADR-001.
+
+### Desarrollo local
+
+```bash
+pnpm db:up        # Postgres 16 en Docker (puerto 54329, roles creados por init-roles.sql)
+pnpm test:db      # suite de aislamiento (Vitest, proyecto db)
+pnpm test:e2e     # COV_PF_TENANT_001 contra la app real (Playwright)
+pnpm db:down      # apaga y limpia
+```
+
+### Runbook de despliegue a Railway (pendiente de ejecutar; NO correr sin ventana de mantenimiento)
+
+1. Crear roles (una vez, como superuser): ejecutar `scripts/db/init-roles.sql` adaptando
+   passwords (en Railway el rol por defecto es superuser del servicio).
+2. Configurar `DATABASE_URL_MIGRATIONS` (rol `brandme_migrator`) en el servicio.
+3. `pnpm db:migrate` — aplica 0000→0003 (baseline idempotente sobre la DB existente; el backfill
+   deriva consultants desde `user_sessions`/sesiones huérfanas y ABORTA si algo queda NULL).
+4. Rotar `DATABASE_URL` al rol `brandme_app` y redeploy.
+5. Verificación: correr la suite db apuntando `TEST_DATABASE_URL*` a un fork/staging — nunca
+   contra producción.
+6. **Rollback**: solo vía migración inversa escrita ex profeso (`DROP POLICY` +
+   `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` + restaurar `DATABASE_URL` al rol original).
+   No hay rollback automático.

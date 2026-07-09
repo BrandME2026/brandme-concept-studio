@@ -1,6 +1,7 @@
 import { isDbConfigured } from "@/lib/db/client";
 import { isStripeConfigured } from "@/lib/stripe/client";
 import { listAllGenerations } from "@/lib/db/history";
+import { withSystemContext } from "@/lib/db/tenant-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,9 @@ export async function GET() {
 
   if (isDbConfigured()) {
     try {
-      const pages = await listAllGenerations(MAX, isStripeConfigured());
+      const pages = await withSystemContext("llms-txt", () =>
+        listAllGenerations(MAX, isStripeConfigured()),
+      );
       for (const p of pages) {
         const slug = p.slug ?? p.id;
         const url = `${SITE_URL}/p/${slug}`;

@@ -11,9 +11,11 @@ import { buildGenerateMessages } from "@/lib/ai/build-messages";
 import { designProposalSchema, tokensSchema, QUALITY_VALUES } from "@/lib/schemas";
 import { serializeDesignMd } from "@/lib/ai/design-md";
 import { injectImages } from "@/lib/preview/inject-images";
-import { getSessionId } from "@/lib/session";
-import { saveGeneration, findGenerationByBrandCity } from "@/lib/db/history";
+import { readSessionId } from "@/lib/session";
+import { saveGeneration, findGenerationByBrandCity, uniqueSlug } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
+import { withSystemContext, withTenant } from "@/lib/db/tenant-context";
+import { tenantRoute } from "@/lib/api/tenant-route";
 import { isStripeConfigured } from "@/lib/stripe/client";
 import { slugify } from "@/lib/seo/slug";
 import { buildWhatsAppLink, buildMailtoLink, buildPhoneLink } from "@/lib/seo/contact-links";
@@ -66,30 +68,7 @@ const generateBodySchema = z.object({
  *  {type:"done", proposal, designMd, html}
  *  {type:"error", message}
  */
-export async function POST(req: Request) {
-  // Anti-abuso: rate-limit por IP + tope diario global (operación CARA: GPT-5.5/Sonnet).
-  const rl = rateLimit(`generate:${clientKey(req)}`, LIMITS.generate);
-  if (!rl.ok) return tooMany(rl.retryAfter);
-  if (!llmBudget.tryConsume()) {
-    console.warn("[generate] tope diario de LLM alcanzado", llmBudget.status());
-    return budgetExceeded();
-  }
-
-  try {
-    assertOpenRouterConfigured();
-  } catch {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "NOT_CONFIGURED",
-          message: "El servicio de IA no está configurado (falta OPENROUTER_API_KEY).",
-        },
-      },
-      { status: 503 },
-    );
-  }
-
+const postHandler = tenantRoute(async (req, _ctx, { consultantId }) => {
   const parsed = generateBodySchema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json(
@@ -104,16 +83,18 @@ export async function POST(req: Request) {
   const tokens = parsed.data.tokens as unknown as DesignTokens;
   const { screenshot, brief, language, images, logo: userLogo, quality, seo } = parsed.data;
 
-  // Sesión para el historial (cookie); se lee aquí, fuera del stream.
-  const sessionId = await getSessionId();
+  // Sesión para la columna de trazabilidad; tenantRoute garantiza la cookie.
+  const sessionId = (await readSessionId())!;
   const sourceUrl = tokens?.meta?.url ?? "";
 
   // Anti-duplicado (antes de gastar tokens del LLM): si ya existe una página para
-  // esta marca+ciudad, la reusamos en vez de generar otra clónica. Determinista.
+  // esta marca+ciudad DEL TENANT, la reusamos en vez de generar otra clónica.
   const dupBrand = seo?.brand?.trim();
   if (isDbConfigured() && dupBrand) {
     try {
-      const existing = await findGenerationByBrandCity(dupBrand, seo?.city?.trim() ?? null, sessionId);
+      const existing = await withTenant(consultantId, () =>
+        findGenerationByBrandCity(dupBrand, seo?.city?.trim() ?? null),
+      );
       if (existing?.slug) {
         return NextResponse.json({
           success: true,
@@ -207,12 +188,17 @@ export async function POST(req: Request) {
         const css = await compileTailwindForHtml(html);
 
         // Guardar en el historial (secundario: no romper la generación si falla).
-        // saveGeneration reserva el slug único; lo propagamos en el `done` para que el
-        // cliente persista el MISMO slug en la conversación.
+        // El slug único se reserva bajo system scope (la unicidad es GLOBAL entre
+        // tenants); el INSERT corre en su propio bloque withTenant — la llamada al
+        // LLM ya terminó, ningún contexto de DB estuvo abierto durante el stream.
         let slug: string | null = null;
         if (isDbConfigured()) {
           try {
-            const saved = await saveGeneration({
+            const finalSlug = slugBase
+              ? await withSystemContext("slug-unico", () => uniqueSlug(slugBase))
+              : null;
+            const saved = await withTenant(consultantId, () =>
+              saveGeneration({
               sessionId,
               url: sourceUrl,
               name: object.name,
@@ -220,7 +206,7 @@ export async function POST(req: Request) {
               html,
               screenshot,
               interactions: object.interactions ?? null,
-              slug: slugBase,
+              slug: finalSlug,
               brand,
               city,
               metaTitle: object.seo?.metaTitle ?? null,
@@ -235,7 +221,8 @@ export async function POST(req: Request) {
               // Sin Stripe configurado → publicar gratis (legacy): nace publicada.
               // Con Stripe → nace en borrador hasta que el usuario pague y publique.
               published: !isStripeConfigured(),
-            });
+              }),
+            );
             slug = saved.slug;
           } catch (e) {
             console.error("[generate] no se pudo guardar en historial", e);
@@ -268,4 +255,31 @@ export async function POST(req: Request) {
       "Cache-Control": "no-cache",
     },
   });
+});
+
+export async function POST(req: Request, ctx: unknown) {
+  // Anti-abuso: rate-limit por IP + tope diario global (operación CARA: GPT-5.5/Sonnet).
+  const rl = rateLimit(`generate:${clientKey(req)}`, LIMITS.generate);
+  if (!rl.ok) return tooMany(rl.retryAfter);
+  if (!llmBudget.tryConsume()) {
+    console.warn("[generate] tope diario de LLM alcanzado", llmBudget.status());
+    return budgetExceeded();
+  }
+
+  try {
+    assertOpenRouterConfigured();
+  } catch {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "NOT_CONFIGURED",
+          message: "El servicio de IA no está configurado (falta OPENROUTER_API_KEY).",
+        },
+      },
+      { status: 503 },
+    );
+  }
+
+  return postHandler(req, ctx);
 }

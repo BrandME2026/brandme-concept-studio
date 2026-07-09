@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { isDbConfigured } from "@/lib/db/client";
+import { isStripeConfigured } from "@/lib/stripe/client";
 import { listAllGenerations } from "@/lib/db/history";
+import { withSystemContext } from "@/lib/db/tenant-context";
 
 // Dinámico: lee la URL y la DB en runtime (no horneadas en build-time).
 export const dynamic = "force-dynamic";
@@ -15,7 +17,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   if (isDbConfigured()) {
     try {
-      const pages = await listAllGenerations(200);
+      // Mismo gate que /webs y llms.txt: con Stripe activo, no indexar webs impagas.
+      const pages = await withSystemContext("sitemap", () =>
+        listAllGenerations(200, isStripeConfigured()),
+      );
       for (const p of pages) {
         // Image sitemap: solo screenshots servidos por http (Google ignora data-URIs).
         const img = p.screenshot && p.screenshot.startsWith("http") ? [p.screenshot] : undefined;

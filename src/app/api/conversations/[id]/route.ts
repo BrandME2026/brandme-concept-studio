@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
-import { getSessionId } from "@/lib/session";
 import {
   getConversation,
   saveConversation,
   deleteConversation,
 } from "@/lib/db/conversations";
 import { isDbConfigured } from "@/lib/db/client";
+import { withTenant } from "@/lib/db/tenant-context";
+import { tenantRoute } from "@/lib/api/tenant-route";
 
 export const runtime = "nodejs";
+
+type Ctx = { params: Promise<{ id: string }> };
 
 const noDb = () =>
   NextResponse.json(
@@ -15,16 +18,11 @@ const noDb = () =>
     { status: 404 },
   );
 
-/** Carga una conversación (rehidratar el chat). */
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  if (!isDbConfigured()) return noDb();
+/** Carga una conversación (rehidratar el chat). RLS garantiza que es del tenant. */
+const getHandler = tenantRoute<Ctx>(async (_req, { params }, { consultantId }) => {
   try {
     const { id } = await params;
-    const sessionId = await getSessionId();
-    const rec = await getConversation(id, sessionId);
+    const rec = await withTenant(consultantId, () => getConversation(id));
     if (!rec) {
       return NextResponse.json(
         { success: false, error: { code: "NOT_FOUND", message: "No encontrada" } },
@@ -39,19 +37,19 @@ export async function GET(
       { status: 500 },
     );
   }
+});
+
+export async function GET(req: Request, ctx: Ctx) {
+  if (!isDbConfigured()) return noDb();
+  return getHandler(req, ctx);
 }
 
 /** Guarda mensajes / estado de la conversación. */
-export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  if (!isDbConfigured()) return NextResponse.json({ success: true });
+const putHandler = tenantRoute<Ctx>(async (req, { params }, { consultantId }) => {
   try {
     const { id } = await params;
-    const sessionId = await getSessionId();
     const patch = await req.json().catch(() => ({}));
-    await saveConversation(id, sessionId, patch);
+    await withTenant(consultantId, () => saveConversation(id, patch));
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[conversations/id] PUT fallo", err);
@@ -60,18 +58,18 @@ export async function PUT(
       { status: 500 },
     );
   }
+});
+
+export async function PUT(req: Request, ctx: Ctx) {
+  if (!isDbConfigured()) return NextResponse.json({ success: true });
+  return putHandler(req, ctx);
 }
 
 /** Borra la conversación. */
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  if (!isDbConfigured()) return NextResponse.json({ success: true });
+const deleteHandler = tenantRoute<Ctx>(async (_req, { params }, { consultantId }) => {
   try {
     const { id } = await params;
-    const sessionId = await getSessionId();
-    await deleteConversation(id, sessionId);
+    await withTenant(consultantId, () => deleteConversation(id));
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[conversations/id] DELETE fallo", err);
@@ -80,4 +78,9 @@ export async function DELETE(
       { status: 500 },
     );
   }
+});
+
+export async function DELETE(req: Request, ctx: Ctx) {
+  if (!isDbConfigured()) return NextResponse.json({ success: true });
+  return deleteHandler(req, ctx);
 }

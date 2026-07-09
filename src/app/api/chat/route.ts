@@ -8,6 +8,7 @@ import {
 } from "@/lib/ai/prompts";
 import { isDbConfigured } from "@/lib/db/client";
 import { listAllGenerations } from "@/lib/db/history";
+import { withSystemContext } from "@/lib/db/tenant-context";
 import type { DesignTokens } from "@/types/design";
 import { rateLimit, clientKey, tooMany, LIMITS } from "@/lib/security/rate-limit";
 
@@ -32,7 +33,7 @@ interface ChatBody {
 async function realExamples(): Promise<string> {
   if (!isDbConfigured()) return "";
   try {
-    const gens = await listAllGenerations(8);
+    const gens = await withSystemContext("chat-ejemplos", () => listAllGenerations(8));
     return gens
       .map((g) => {
         let host = g.url;

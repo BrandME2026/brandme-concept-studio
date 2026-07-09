@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { listAllGenerations, countAllGenerations } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
+import { isStripeConfigured } from "@/lib/stripe/client";
+import { withSystemContext } from "@/lib/db/tenant-context";
 
 export const runtime = "nodejs";
 // Lee la DB en runtime — sin esto Next hornea la respuesta en build (sin DATABASE_URL
@@ -17,8 +19,12 @@ export async function GET() {
   }
   try {
     // count es secundario: si falla, no debe vaciar la galería (defensa en profundidad).
-    const items = await listAllGenerations();
-    const total = await countAllGenerations().catch(() => items.length);
+    const { items, total } = await withSystemContext("galeria-publica", async () => {
+      // Mismo gate que /webs: con Stripe activo, las webs impagas no se listan.
+      const items = await listAllGenerations(60, isStripeConfigured());
+      const total = await countAllGenerations().catch(() => items.length);
+      return { items, total };
+    });
     return NextResponse.json({ success: true, data: { items, total } });
   } catch (err) {
     console.error("[gallery] fallo listando", err);

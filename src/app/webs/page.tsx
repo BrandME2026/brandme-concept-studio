@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cookies, headers } from "next/headers";
 import { listAllGenerations, type GenerationListItem } from "@/lib/db/history";
 import { isDbConfigured } from "@/lib/db/client";
+import { withSystemContext } from "@/lib/db/tenant-context";
 import { isStripeConfigured } from "@/lib/stripe/client";
 import { inferCategory, CATEGORY_ORDER } from "@/lib/brand-category";
 import { jsonLdScript } from "@/lib/seo/json-ld";
@@ -49,7 +50,9 @@ export default async function WebsPage() {
   let items: GenerationListItem[] = [];
   if (isDbConfigured()) {
     try {
-      items = await listAllGenerations(60, isStripeConfigured());
+      items = await withSystemContext("galeria-webs", () =>
+        listAllGenerations(60, isStripeConfigured()),
+      );
     } catch {
       items = [];
     }
