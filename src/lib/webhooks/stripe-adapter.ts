@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe/client";
-import { applySubscriptionEvent } from "@/lib/db/subscriptions";
+import { applySubscriptionEvent, getConsultantByCustomer } from "@/lib/db/subscriptions";
+import { signalAccountState, type AccountSignal } from "@/lib/auth/account-state-machine";
 import type { WebhookAdapter } from "./handler";
 
 /**
@@ -87,6 +88,22 @@ export const stripeWebhookAdapter: WebhookAdapter<Stripe.Event, StripePrepared> 
     if (!prepared.apply) return;
     // Contexto system ya abierto por el primitivo: la función usa db() ambiental.
     const result = await applySubscriptionEvent(prepared.apply);
+    if (result === "applied") {
+      // Señal al AccountStateMachine (WO-5) según el status RESULTANTE:
+      // active|trialing → subscribed; terminal → active_post_cancel; estados
+      // intermedios (past_due, incomplete) no transicionan. Señales repetidas
+      // o inválidas son no-op dentro de la máquina — jamás fallan el webhook.
+      const signal: AccountSignal | null = ["active", "trialing"].includes(prepared.apply.status)
+        ? "checkout_completed"
+        : ["canceled", "unpaid", "incomplete_expired"].includes(prepared.apply.status)
+          ? "subscription_deleted"
+          : null;
+      if (signal) {
+        const consultantId = await getConsultantByCustomer(prepared.apply.customerId);
+        if (consultantId) await signalAccountState(consultantId, signal);
+      }
+      return;
+    }
     if (result === "customer_not_found") {
       // Lanzar → rollback del dedup → 500 → Stripe reintenta. Cubre la carrera
       // checkout→webhook; un customer permanentemente desconocido generará

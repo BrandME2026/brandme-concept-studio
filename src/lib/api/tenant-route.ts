@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { TenantContextError } from "@/lib/db/tenant-context";
-import { requireConsultantId } from "@/lib/tenant";
+import { requireConsultant } from "@/lib/tenant";
 import { withObservabilityContext } from "@/lib/observability/observability";
 import { checkConsultantRateLimit, tooMany, type LimitName } from "@/lib/security/rate-limit";
 import { corsHeadersFor, isSameOrigin } from "@/lib/security/cors";
@@ -38,7 +38,17 @@ export function tenantRoute<Ctx = unknown>(
 
     let consultantId: string;
     try {
-      consultantId = await requireConsultantId();
+      const identity = await requireConsultant();
+      // Gating del lifecycle (WO-5): una cuenta 'pending' (Stage 1 sin password)
+      // no accede a superficies autenticadas; el portal redirige a la claim
+      // screen con este código. Los consultants anónimos nacen 'active'.
+      if (identity.accountState === "pending") {
+        return NextResponse.json(
+          { error: "Cuenta pendiente de activación", code: "ACCOUNT_PENDING" },
+          { status: 403 },
+        );
+      }
+      consultantId = identity.consultantId;
     } catch (err) {
       if (err instanceof TenantContextError) {
         return NextResponse.json({ error: "No autorizado" }, { status: 401 });

@@ -47,12 +47,17 @@ export const userSessions = pgTable(
   (t) => [index("idx_user_sessions_user").on(t.userId)],
 );
 
-/** Tenant core (blueprint Platform Foundation, modelo Consultant). account_state llega en WO-5 (EP-01 aditivo). */
+/**
+ * Tenant core (blueprint Platform Foundation, modelo Consultant). account_state
+ * (WO-5): pending → active → subscribed → active_post_cancel; SOLO lo escribe
+ * AccountStateMachine (trigger enforce_account_state_writer, migración 0011).
+ */
 export const consultants = pgTable(
   "consultants",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     firebaseUid: text("firebase_uid").references(() => users.id),
+    accountState: text("account_state").notNull().default("active"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -61,6 +66,18 @@ export const consultants = pgTable(
       .where(sql`firebase_uid IS NOT NULL`),
   ],
 );
+
+/** Milestones write-once del onboarding (WO-5): 1 fila por consultant, timestamps UTC. */
+export const onboardingSessions = pgTable("onboarding_sessions", {
+  consultantId: uuid("consultant_id")
+    .primaryKey()
+    .references(() => consultants.id, { onDelete: "cascade" }),
+  stage1SubmittedAt: timestamp("stage1_submitted_at", { withTimezone: true }),
+  stage2PasswordSetAt: timestamp("stage2_password_set_at", { withTimezone: true }),
+  checkoutCompletedAt: timestamp("checkout_completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /** Mapping cookie bmc_session → consultant. La cookie identifica el navegador; el tenant es el consultant. */
 export const consultantSessions = pgTable(

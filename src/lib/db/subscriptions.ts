@@ -33,6 +33,15 @@ export async function getSubscriptionForTenant(): Promise<SubscriptionRecord | n
   return rows[0] ?? null;
 }
 
+/** consultant dueño de un customer de Stripe (webhook; usar bajo withSystemContext). */
+export async function getConsultantByCustomer(customerId: string): Promise<string | null> {
+  const { rows } = await db().query<{ consultantId: string | null }>(
+    `SELECT consultant_id AS "consultantId" FROM subscriptions WHERE stripe_customer_id = $1`,
+    [customerId],
+  );
+  return rows[0]?.consultantId ?? null;
+}
+
 /** session_id asociado a un customer de Stripe (webhook; usar bajo withSystemContext). */
 export async function getSessionByCustomer(customerId: string): Promise<string | null> {
   const { rows } = await db().query<{ sessionId: string }>(

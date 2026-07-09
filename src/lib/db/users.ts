@@ -14,11 +14,15 @@ export interface UserRecord {
   photoUrl: string | null;
 }
 
-/** Crea/actualiza el usuario y vincula la sesión anónima actual a él. Idempotente. */
+/**
+ * Crea/actualiza el usuario y vincula la sesión anónima actual a él.
+ * Idempotente. Devuelve el consultant FINAL de la sesión (post-merge) para que
+ * el caller pueda disparar señales del AccountStateMachine (WO-5).
+ */
 export async function upsertUserAndLinkSession(
   user: { id: string; email?: string; displayName?: string; photoUrl?: string },
   sessionId: string,
-): Promise<void> {
+): Promise<string> {
   await db().query(
     `INSERT INTO users (id, email, display_name, photo_url)
      VALUES ($1, $2, $3, $4)
@@ -35,7 +39,7 @@ export async function upsertUserAndLinkSession(
      ON CONFLICT (session_id) DO UPDATE SET user_id = EXCLUDED.user_id, linked_at = now()`,
     [sessionId, user.id],
   );
-  await mergeConsultantForUser(user.id, sessionId);
+  return mergeConsultantForUser(user.id, sessionId);
 }
 
 const TENANT_TABLES = ["conversations", "generations", "leads", "subscriptions"] as const;
@@ -45,9 +49,10 @@ const TENANT_TABLES = ["conversations", "generations", "leads", "subscriptions"]
  * consultant CANÓNICO del user y el historial del provisional se reasigna —
  * mismo comportamiento de "no perder el historial al loguearse" que existía
  * con user_sessions, ahora a nivel de tenant. Corre dentro de la transacción
- * del withSystemContext del caller (pooled = un solo BEGIN).
+ * del withSystemContext del caller (pooled = un solo BEGIN). Devuelve el
+ * consultant final de la sesión.
  */
-async function mergeConsultantForUser(userId: string, sessionId: string): Promise<void> {
+async function mergeConsultantForUser(userId: string, sessionId: string): Promise<string> {
   const canonical = (
     await db().query<{ id: string }>(`SELECT id FROM consultants WHERE firebase_uid = $1`, [
       userId,
@@ -67,19 +72,19 @@ async function mergeConsultantForUser(userId: string, sessionId: string): Promis
         `UPDATE consultants SET firebase_uid = $1 WHERE id = $2 AND firebase_uid IS NULL`,
         [userId, provisional],
       );
-    } else {
-      // Sesión sin datos todavía: nace el canónico y se mapea la sesión.
-      const created = await db().query<{ id: string }>(
-        `INSERT INTO consultants (firebase_uid) VALUES ($1) RETURNING id`,
-        [userId],
-      );
-      await db().query(
-        `INSERT INTO consultant_sessions (session_id, consultant_id)
-         VALUES ($1, $2) ON CONFLICT (session_id) DO NOTHING`,
-        [sessionId, created.rows[0].id],
-      );
+      return provisional;
     }
-    return;
+    // Sesión sin datos todavía: nace el canónico y se mapea la sesión.
+    const created = await db().query<{ id: string }>(
+      `INSERT INTO consultants (firebase_uid) VALUES ($1) RETURNING id`,
+      [userId],
+    );
+    await db().query(
+      `INSERT INTO consultant_sessions (session_id, consultant_id)
+       VALUES ($1, $2) ON CONFLICT (session_id) DO NOTHING`,
+      [sessionId, created.rows[0].id],
+    );
+    return created.rows[0].id;
   }
 
   if (!provisional) {
@@ -89,9 +94,9 @@ async function mergeConsultantForUser(userId: string, sessionId: string): Promis
        ON CONFLICT (session_id) DO UPDATE SET consultant_id = EXCLUDED.consultant_id`,
       [sessionId, canonical],
     );
-    return;
+    return canonical;
   }
-  if (provisional === canonical) return;
+  if (provisional === canonical) return canonical;
 
   // Repuntar TODAS las sesiones del provisional y reasignar su historial.
   await db().query(
@@ -104,6 +109,7 @@ async function mergeConsultantForUser(userId: string, sessionId: string): Promis
       provisional,
     ]);
   }
+  return canonical;
 }
 
 /** Usuario dueño de una sesión, o null si esa sesión no está vinculada a nadie. */

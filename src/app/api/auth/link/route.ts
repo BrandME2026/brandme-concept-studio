@@ -4,6 +4,7 @@ import { isDbConfigured } from "@/lib/db/client";
 import { upsertUserAndLinkSession } from "@/lib/db/users";
 import { withSystemContext } from "@/lib/db/tenant-context";
 import { verifyFirebaseToken } from "@/lib/auth/verify-token";
+import { getAccountState, signalAccountState } from "@/lib/auth/account-state-machine";
 import { checkRateLimit, clientKey, tooMany } from "@/lib/security/rate-limit";
 import { captureError } from "@/lib/observability/observability";
 
@@ -53,8 +54,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    await withSystemContext("auth-link-merge", () =>
-      upsertUserAndLinkSession(
+    await withSystemContext("auth-link-merge", async () => {
+      const consultantId = await upsertUserAndLinkSession(
         {
           id: verified.uid,
           email: verified.email,
@@ -62,8 +63,14 @@ export async function POST(req: Request) {
           photoUrl: verified.picture,
         },
         sessionId,
-      ),
-    );
+      );
+      // Señal password_set del AccountStateMachine (WO-5): un login VERIFICADO
+      // sobre un consultant 'pending' confirma la credencial (Stage 2 de Build 2
+      // golpea este mismo path). Para cuentas ya activas es no-op.
+      if ((await getAccountState(consultantId)) === "pending") {
+        await signalAccountState(consultantId, "password_set");
+      }
+    });
     return NextResponse.json({ success: true, data: { linked: true } });
   } catch (e) {
     captureError(e, "[auth/link] no se pudo vincular la sesión");
