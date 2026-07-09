@@ -1,11 +1,13 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   index,
   integer,
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -253,6 +255,64 @@ export const previewLinks = pgTable("preview_links", {
   token: text("token").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Señales ACS por ZIP (WO-18). Entidad de PLATAFORMA compartida (solo system). */
+export const zipDemographicData = pgTable("zip_demographic_data", {
+  zipCode: text("zip_code").primaryKey(),
+  medianHhIncome: integer("median_hh_income"),
+  popGrowth5yrPct: numeric("pop_growth_5yr_pct", { precision: 6, scale: 3 }),
+  businessOwnerPct: numeric("business_owner_pct", { precision: 6, scale: 3 }),
+  ownerOccupancyRate: numeric("owner_occupancy_rate", { precision: 6, scale: 3 }),
+  age3565Pct: numeric("age_35_65_pct", { precision: 6, scale: 3 }),
+  age2552Pct: numeric("age_25_52_pct", { precision: 6, scale: 3 }),
+  age65PlusPct: numeric("age_65_plus_pct", { precision: 6, scale: 3 }),
+  householdDensityPerSqMile: numeric("household_density_per_sq_mile", { precision: 10, scale: 2 }),
+  acsVintageYear: integer("acs_vintage_year").notNull(),
+  dataLimited: boolean("data_limited").notNull().default(false),
+  lastFetchedAt: timestamp("last_fetched_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Territorio confirmado por consultant (WO-18); lockeado post-Stage 1 (AC-TI-001.6). */
+export const consultantTerritories = pgTable(
+  "consultant_territories",
+  {
+    consultantId: uuid("consultant_id")
+      .notNull()
+      .references(() => consultants.id),
+    zipCode: text("zip_code").notNull(),
+    ingestionStatus: text("ingestion_status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.consultantId, t.zipCode] })],
+);
+
+/** Score por combinación consultant-brand-ZIP (WO-18, RLS tenant read). */
+export const zipFranchiseScores = pgTable("zip_franchise_scores", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  consultantId: uuid("consultant_id")
+    .notNull()
+    .references(() => consultants.id),
+  brandId: uuid("brand_id").references(() => brands.id),
+  zipCode: text("zip_code").notNull(),
+  score: numeric("score", { precision: 5, scale: 2 }).notNull(),
+  demographicComponent: numeric("demographic_component", { precision: 5, scale: 2 }).notNull(),
+  performanceComponent: numeric("performance_component", { precision: 5, scale: 2 }),
+  weightProfileUsed: text("weight_profile_used").notNull(),
+  computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Agregados anónimos cross-consultant por ZIP (WO-18; solo system). */
+export const crossConsultantZipSignals = pgTable("cross_consultant_zip_signals", {
+  zipCode: text("zip_code").primaryKey(),
+  contributingConsultantCount: integer("contributing_consultant_count").notNull().default(0),
+  aggregateBrandmepageViews: bigint("aggregate_brandmepage_views", { mode: "number" })
+    .notNull()
+    .default(0),
+  aggregateLeadVolume: integer("aggregate_lead_volume").notNull().default(0),
+  aggregateQualifiedLeadRate: numeric("aggregate_qualified_lead_rate", { precision: 5, scale: 2 }),
+  aggregateConversionRate: numeric("aggregate_conversion_rate", { precision: 5, scale: 2 }),
+  lastComputedAt: timestamp("last_computed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** Config runtime EP-07 (WO-7). Tabla de plataforma SIN RLS; read path = ConfigStore. */
