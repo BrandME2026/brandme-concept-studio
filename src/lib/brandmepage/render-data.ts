@@ -1,4 +1,6 @@
+import type { ComparisonBrand } from "./comparison";
 import type { RenderablePage } from "./store";
+import type { RenderableTestimonial } from "./testimonials";
 import type { ConsultantOverlay, GeneratedCopy } from "./types";
 
 /**
@@ -68,6 +70,10 @@ export interface RenderModel {
     portfolioNav: boolean; // sección 10: ≥1 otra página publicada
   };
   portfolio: PortfolioCard[];
+  /** Testimonials activos (WO-38); vacío = bloque omitido (AC-TES-002.2). */
+  testimonials: { items: RenderableTestimonial[]; visibleBeforeCollapse: number };
+  /** Marcas comparables (WO-37); la actual + otras publicadas. */
+  comparison: ComparisonBrand[];
   leadSlug: string; // slug compuesto para leads (AC-BPG-001.4)
 }
 
@@ -75,6 +81,8 @@ export function assembleRenderModel(
   page: RenderablePage,
   overlay: ConsultantOverlay,
   portfolio: PortfolioCard[],
+  testimonials: RenderModel["testimonials"] = { items: [], visibleBeforeCollapse: 5 },
+  comparison: ComparisonBrand[] = [],
 ): RenderModel {
   const fdd = page.fddFinancialData as Record<string, unknown> | null;
   return {
@@ -88,10 +96,12 @@ export function assembleRenderModel(
       roiCalculator: fdd !== null && Object.keys(fdd).length > 0,
       territoryPending: true,
       comparisonCard: portfolio.length > 0,
-      testimonials: false,
+      testimonials: testimonials.items.length > 0,
       portfolioNav: portfolio.length > 0,
     },
     portfolio: portfolio.slice(0, 9),
+    testimonials,
+    comparison,
     leadSlug: `${page.consultantSlug}/${page.brandSlug}`,
   };
 }

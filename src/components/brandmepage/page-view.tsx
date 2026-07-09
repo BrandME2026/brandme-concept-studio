@@ -1,4 +1,5 @@
 import type { RenderModel } from "@/lib/brandmepage/render-data";
+import { ComparisonCard } from "./comparison-card";
 
 /**
  * Vista SSR de la BrandMePage (WO-15, AC-BPG-001.2): pinta el RenderModel en
@@ -170,16 +171,63 @@ export function BrandMePageView({ model }: { model: RenderModel }) {
         />
       </section>
 
-      {/* 8) Comparison card entry point (condicional) */}
-      {blocks.comparisonCard ? (
-        <section className="mx-auto max-w-3xl px-6 pb-12" data-block="comparison-card">
-          <a href="#portfolio" className="underline" style={{ color: primary }}>
-            Compara esta marca con otras que represento →
-          </a>
+      {/* 8) Multi-Brand Comparison Card (WO-37): entry point + comparación
+          interactiva hasta 3 marcas; read-only, sin recomendación. */}
+      {blocks.comparisonCard && model.comparison.length > 1 ? (
+        <section className="mx-auto max-w-3xl px-6 pb-12">
+          <ComparisonCard brands={model.comparison} accent={primary} />
         </section>
       ) : null}
 
-      {/* 9) Testimonials: WO hijo — sin datos aún, se omite (blocks.testimonials=false) */}
+      {/* 9) Testimonials (WO-38): social proof del consultor; colapso por
+          threshold de ConfigStore (AC-TES-002.5) vía <details> sin JS. */}
+      {blocks.testimonials ? (
+        <section className="mx-auto max-w-3xl px-6 pb-12" data-block="testimonials">
+          <h2 className="mb-4 text-2xl font-semibold" style={{ color: primary }}>
+            Lo que dicen quienes ya dieron el paso
+          </h2>
+          {model.testimonials.items
+            .slice(0, model.testimonials.visibleBeforeCollapse)
+            .map((t, i) => (
+              <blockquote key={i} className="mb-4 rounded-lg border border-gray-200 p-4">
+                <p className="italic">“{t.quote}”</p>
+                <footer className="mt-2 text-sm text-gray-600">
+                  — {t.displayName}
+                  {t.roleContext ? `, ${t.roleContext}` : ""}
+                  {t.viaBrand ? (
+                    <span className="ml-2 text-xs text-gray-400">
+                      via sitio de {t.viaBrand}
+                    </span>
+                  ) : null}
+                </footer>
+              </blockquote>
+            ))}
+          {model.testimonials.items.length > model.testimonials.visibleBeforeCollapse ? (
+            <details>
+              <summary className="cursor-pointer text-sm underline" style={{ color: primary }}>
+                Ver {model.testimonials.items.length - model.testimonials.visibleBeforeCollapse}{" "}
+                testimonios más
+              </summary>
+              {model.testimonials.items
+                .slice(model.testimonials.visibleBeforeCollapse)
+                .map((t, i) => (
+                  <blockquote key={i} className="mb-4 mt-4 rounded-lg border border-gray-200 p-4">
+                    <p className="italic">“{t.quote}”</p>
+                    <footer className="mt-2 text-sm text-gray-600">
+                      — {t.displayName}
+                      {t.roleContext ? `, ${t.roleContext}` : ""}
+                      {t.viaBrand ? (
+                        <span className="ml-2 text-xs text-gray-400">
+                          via sitio de {t.viaBrand}
+                        </span>
+                      ) : null}
+                    </footer>
+                  </blockquote>
+                ))}
+            </details>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* 10) Portfolio brand navigation (al fondo) */}
       {blocks.portfolioNav ? (

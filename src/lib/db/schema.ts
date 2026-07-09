@@ -315,6 +315,45 @@ export const crossConsultantZipSignals = pgTable("cross_consultant_zip_signals",
   lastComputedAt: timestamp("last_computed_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Testimonials del consultant (WO-38): perfil, aplican a todas sus páginas; máx 5. */
+export const testimonials = pgTable(
+  "testimonials",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    consultantId: uuid("consultant_id")
+      .notNull()
+      .references(() => consultants.id),
+    quote: text("quote").notNull(),
+    displayName: text("display_name").notNull(),
+    roleContext: text("role_context"),
+    visible: boolean("visible").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    source: text("source").notNull().default("manual"),
+    sourceBrandName: text("source_brand_name"),
+    sourceUrl: text("source_url"),
+    status: text("status").notNull().default("live"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("idx_testimonials_consultant").on(t.consultantId, t.position)],
+);
+
+/** Sugerencias brand-sourced descartadas (WO-38, AC-TES-005.2). */
+export const testimonialDismissals = pgTable(
+  "testimonial_dismissals",
+  {
+    consultantId: uuid("consultant_id")
+      .notNull()
+      .references(() => consultants.id),
+    extractionId: uuid("extraction_id")
+      .notNull()
+      .references(() => brandExtractions.id),
+    quoteHash: text("quote_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.consultantId, t.extractionId, t.quoteHash] })],
+);
+
 /** Config runtime EP-07 (WO-7). Tabla de plataforma SIN RLS; read path = ConfigStore. */
 export const platformConfig = pgTable(
   "platform_config",

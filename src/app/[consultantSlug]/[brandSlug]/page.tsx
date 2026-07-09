@@ -9,6 +9,8 @@ import {
   type RenderablePage,
 } from "@/lib/brandmepage/store";
 import { assembleRenderModel, type RenderModel } from "@/lib/brandmepage/render-data";
+import { listActiveTestimonials } from "@/lib/brandmepage/testimonials";
+import { getComparisonBrands } from "@/lib/brandmepage/comparison";
 import { buildJsonLd, pageTitle, pageUrl } from "@/lib/brandmepage/seo";
 import type { ConsultantOverlay } from "@/lib/brandmepage/types";
 import { BrandMePageView } from "@/components/brandmepage/page-view";
@@ -42,7 +44,13 @@ async function loadPublished(
       logoUrl: p.logoUrl,
       primaryColor: p.primaryColor,
     }));
-    return { page, overlay, model: assembleRenderModel(page, overlay, portfolio) };
+    const testimonials = await listActiveTestimonials(page.consultantId);
+    const comparison = await getComparisonBrands(page.consultantId, page.id);
+    return {
+      page,
+      overlay,
+      model: assembleRenderModel(page, overlay, portfolio, testimonials, comparison),
+    };
   });
 }
 
