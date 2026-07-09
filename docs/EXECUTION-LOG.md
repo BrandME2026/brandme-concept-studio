@@ -238,3 +238,11 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 - Entregado: Agente 04 completo — composición 3 capas, lifecycle 8 estados single-writer, ApprovalGateway configurable, ReRenderScheduler 3 prioridades, ContentQualityFilter, SlugService con reservados, PreviewLinks, página SSR /[consultant]/[brand] con JSON-LD server-side + llms.txt + sitemap + leads con slug compuesto, y el wiring Agente 02 → Agente 04 vivo (extracción completada = página generada).
 - Review R1 encontró 2 MAJOR reales (compliance no cubría meta_description; RLS tenant_all permitía mutar config_id/slugs esquivando el single-writer) + 2 MINOR — todos corregidos con tests de regresión. R2 APPROVED.
 - Drift flaggeado en 8090 (7 puntos): emails/portal Build 6, AMA = agent actual (WO-16), ROI/Territory/booking por datos, zone-slugs WO-17, PostHog/RUM, bus in-process, AC-BPG-002.2 parcial.
+
+## WO-18 — Territory Intelligence: Demographic Data Layer
+- Inicio: 2026-07-09 14:40 · Fin: 2026-07-09 15:05 · Duración: ~25m
+- Tokens subagentes: 44,650 exactos (reviewer, APPROVED a la primera) · Sesión principal: ver /cost
+- Estado: **in_review** en 8090 (NO completed: transporte Census gated) · Commit: `974e9ce` · Issue #17 ABIERTO con el ask
+- Verificado: 269/269 Vitest (7 unit + 8 db nuevos) · 28/28 E2E · lint/tsc cero · CI en curso
+- Entregado: 4 modelos con RLS (demografía/agregados solo-system; scores/territorio tenant read), ingesta con retries y data_limited sin estimación, score computer puro (ADR-002) con 5 perfiles por vertical en ConfigStore + blending 80/20 (umbral 2 contribuyentes, ADR-003), get_zip_scores para Agent 05.
+- **Hallazgo del día:** el Census API ahora EXIGE key (gratuita, 2 min: api.census.gov/data/key_signup.html — llega por email). Provider real gated en CENSUS_API_KEY; interfaz lista para el swap. Inconsistencia del spec (buckets de edad) flaggeada en 8090.
