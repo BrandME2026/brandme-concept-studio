@@ -14,8 +14,8 @@
 | 4 | WO-6 Webhook Handler | ✅ in_review |
 | 5 | WO-8 Observability | ✅ in_review (adelantado a WO-9: la alerta de breach lo necesita) |
 | 6 | WO-9 Rate Limit | ✅ in_review |
-| 7 | WO-32 Product Security | pendiente |
-| 8 | WO-34 CI merge gate | pendiente |
+| 7 | WO-32 Product Security | ✅ in_review |
+| 8 | WO-34 CI merge gate | ✅ in_review |
 
 Bloqueados por infra (decisión del plan, no fallo): WO-5 (Firebase Auth — necesita proyecto/service account), WO-10 (Firebase Storage). Diferidos por prioridad: WO-11, WO-40, WO-41.
 
@@ -117,6 +117,39 @@ Bloqueados por infra (decisión del plan, no fallo): WO-5 (Firebase Auth — nec
 - **Issues #1–#6** (WO-3/7/4/6/8/9): `In Progress` = implementados, esperan TU revisión humana (espejo del `in_review` de 8090)
 - **Issues #7–#8** (WO-32/34): `Todo` — cola de esta sesión · **#9–#10** (WO-5/10): `Todo` + label `blocked-infra`
 - Desde WO-32 en adelante, cada WO nuevo crea su issue al arrancar y se actualiza al cerrar.
+
+---
+
+## WO-32 — Product Security
+
+- **Inicio:** 2026-07-09 08:18 · **Fin:** 2026-07-09 09:13 · **Duración:** ~55m
+- **Tokens subagentes (exacto):** review 55.7k
+- **Estado:** `in_review` (WO 96121682) · **Commit:** `7445154` · **GitHub:** issue #7
+- **Qué:** FileUploadValidator (magic bytes, cableado a generate), PromptInjectionFilter (baseline EP-07 inestrechable, gate en agent/chat con fallback stream), CorsController (allowlist EP-07 en tenantRoute), CSP+HSTS preload con specs anti-drift, SecurityIncidentLog append-only, scrub de credenciales en observability.
+- **Verificado:** 168/168 + 16/16 e2e + exploratorio en vivo + review de bypasses APPROVED (todo fail-closed).
+- Pendientes anotados: PostHog (evento adversarial → incident log como sustituto); CSP source list a config cuando middleware→proxy nodejs.
+
+---
+
+## WO-34 — CI / Test Runner (merge gate)
+
+- **Inicio:** 2026-07-09 09:13 · **Fin:** 2026-07-09 09:24 · **Duración:** ~11m
+- **Tokens subagentes (exacto):** review 43.7k
+- **Estado:** `in_review` (WO ae650b31) · **Commit:** `aa952bd` · **GitHub:** issue #8
+- **Qué:** `.github/workflows/ci.yml` (lint → tsc → Vitest completo con la isolation suite COMO GATE → e2e, sobre el mismo Docker/roles que local) + **branch protection ACTIVA en `development`** (el "main" operativo; main no existe) + drill @COV_CI_001.1 (named offender contra copia del árbol). Prerequisito: tsc y lint del repo a CERO.
+- **Verificado:** pipeline completo ejecutado localmente en el orden del YAML; protección confirmada vía API; review APPROVED (incl. escrutinio de inyección de Actions).
+
+---
+
+# 🌙 CIERRE DE LA SESIÓN NOCTURNA — 2026-07-09 09:24
+
+**8/8 WOs de la cola completados** (los 8 ejecutables sin infra viva de la Fase 1):
+WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00a7798` · WO-9 `b2fe83a` · WO-32 `7445154` · WO-34 `aa952bd` — todos `in_review` en 8090 + issues #1–#8 en GitHub.
+
+- **Suite final:** 168/168 Vitest (23 archivos) + 17/17 e2e Playwright · lint 0 · tsc 0 · build verde.
+- **Tokens de subagentes (suma de lo reportado por el harness):** ~600k. Sesión principal: ver `/cost`.
+- **Commits locales en `8080juniora`: 10** (8 WOs + 2 docs). **SIN push** (pendiente de orden explícita).
+- **Qué sigue:** ver la lista "qué hace falta" en la conversación — push, revisión humana de los 8 WOs, runbook RLS en Railway ANTES de deployar, Firebase (WO-5/10), Cost Model.
 
 ### Notas / pendientes que NO bloquean
 
