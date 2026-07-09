@@ -229,3 +229,12 @@ WO-3 `180eac4` · WO-7 `c8c6851` · WO-4 `fed4345` · WO-6 `06974be` · WO-8 `00
 - Entregado: pipeline completo scrape→LLM→gate como librería (`src/lib/extraction/`, separado del extractor visual): crawl priorizado multi-página, 4 clases de fallo + backup URL + robots respetado, pass LLM único (ADR-002) con retries sobre el mismo contenido (ADR-004), quality gate <3/5 señales, health records (1 activo por brand), limiter FIFO 1-50, compliance verbatim, 3 tablas con RLS + 9 tunables ConfigStore.
 - Review R1 encontró 2 hallazgos REALES: SSRF en el fetch de robots.txt (BLOCKING, corregido + test de regresión con 169.254.169.254) y doble invocación LLM en timeout (corregido: timeout terminal). R2 APPROVED.
 - Drift flaggeado en 8090 (comentario en WO-13): Firecrawl sin API key (ScrapeProvider como frontera), raw content en Postgres (WO-10 blocked), PostHog ausente. Sin superficie HTTP: triggers llegan con WO-12 (Stage 1) y Build 6 (admin) — criterio WO-4.
+
+## WO-15 — BrandMePage Generation (Agente 04)
+- Inicio: 2026-07-09 13:30 · Fin: 2026-07-09 14:25 · Duración: ~55m (incl. 2 rondas de review)
+- Tokens subagentes: 247,483 exactos (explorer 62,021 + reviewer 87,535 + 97,927) · Sesión principal: ver /cost
+- Estado: **completed** en 8090 · Commit: `313ff1d` feat(brandmepage) · Issue #16 cerrado
+- Verificado: 254/254 Vitest (15 unit + 19 db nuevos) · 27/27 E2E (COV_BMP_001 contra la página pública REAL) · lint/tsc cero · CI en curso
+- Entregado: Agente 04 completo — composición 3 capas, lifecycle 8 estados single-writer, ApprovalGateway configurable, ReRenderScheduler 3 prioridades, ContentQualityFilter, SlugService con reservados, PreviewLinks, página SSR /[consultant]/[brand] con JSON-LD server-side + llms.txt + sitemap + leads con slug compuesto, y el wiring Agente 02 → Agente 04 vivo (extracción completada = página generada).
+- Review R1 encontró 2 MAJOR reales (compliance no cubría meta_description; RLS tenant_all permitía mutar config_id/slugs esquivando el single-writer) + 2 MINOR — todos corregidos con tests de regresión. R2 APPROVED.
+- Drift flaggeado en 8090 (7 puntos): emails/portal Build 6, AMA = agent actual (WO-16), ROI/Territory/booking por datos, zone-slugs WO-17, PostHog/RUM, bus in-process, AC-BPG-002.2 parcial.
