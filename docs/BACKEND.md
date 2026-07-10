@@ -270,3 +270,39 @@ pnpm db:down      # apaga y limpia
 - **Branch protection:** `development` (el "main" operativo del repo) exige el check `lint + typecheck + tests + tenant-isolation gate` con strict mode. Nada mergea sin el gate.
 - **Ofensores nombrados:** un endpoint sin clasificación de aislamiento rompe `endpoint-registry` nombrándolo (AC-PF-002.3); el drill `e2e-validator/tests/ci/merge-gate.spec.ts` lo demuestra contra una copia del árbol en cada corrida.
 - **Local = CI:** los mismos comandos, el mismo compose, los mismos roles. Reproducir un fallo de CI: `pnpm db:up && pnpm lint && pnpm tsc --noEmit && pnpm test:all && pnpm test:e2e`.
+
+
+## Agentes implementados (Builds 3-4 — WO-13/15/18/37/38)
+
+Arquitectura común a todos: pipeline como LIBRERÍA (los triggers HTTP reales
+llegan con WO-12/Build 6), transportes intercambiables detrás de interfaces
+(EP-05 para LLM; `ScrapeProvider`/`CensusProvider` para datos), contextos DB
+CORTOS que jamás abarcan awaits de red (regla WO-3), y estados protegidos por
+triggers single-writer con GUC atómico (patrón WO-5).
+
+- **Agente 02 — Brand Extraction** (`src/lib/extraction/`): crawl multi-página
+  priorizado (franchise-intent) → pass LLM único → quality gate (<3/5 señales
+  = degradación) → `brand_extractions` + health records (cola de admin, 1
+  activo por brand). Transporte actual: Playwright local con SSRF guard;
+  Firecrawl al existir key. Emite `brand_extraction.completed`.
+- **Agente 04 — BrandMePage** (`src/lib/brandmepage/`): composición 3 capas
+  (brand layer del 02 o BrandTemplate + copy LLM con gate de compliance
+  verbatim + overlay del consultant) → lifecycle de 8 estados → página SSR
+  REAL en `/[consultantSlug]/[brandSlug]` con JSON-LD server-side, llms.txt,
+  preview links, sitemap y leads (slug compuesto). ApprovalGateway
+  configurable; ReRenderScheduler con cola de 3 prioridades;
+  ContentQualityFilter para edits del consultant.
+- **Bloques hijos**: Testimonials (perfil del consultant, máx 5, validación
+  estricta + filtro; sugerencias brand-sourced del payload del 02) y
+  Multi-Brand Comparison Card (hasta 3 marcas, datos FDD 'explicit', jamás
+  celdas vacías ni estimados).
+- **Territory data layer** (`src/lib/territory/`): ingesta ACS por ZIP
+  (gated en CENSUS_API_KEY) + score 0-100 con 5 perfiles por vertical en
+  ConfigStore y blending 80/20 con umbral de 2 contribuyentes;
+  `getZipScores()` es la interfaz que consumirá el Agente 05.
+- **Eventos** (`src/lib/events/domain-events.ts`): bus in-process mínimo con
+  el MISMO contrato que los eventos del blueprint; al provisionar Trigger.dev
+  los `emit` se convierten en triggers de jobs sin tocar a los suscriptores.
+- **Smoke E2E real**: `npx tsx scripts/smoke-agent-pipeline.ts <brand-url>`
+  corre extracción + generación con transportes REALES (requiere créditos de
+  OpenRouter) y deja la página navegable en el dev server local.
