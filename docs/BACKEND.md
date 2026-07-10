@@ -250,6 +250,11 @@ pnpm db:down      # apaga y limpia
 
 ### Runbook de despliegue a Railway (pendiente de ejecutar; NO correr sin ventana de mantenimiento)
 
+> **Ahora es un comando:** `scripts/railway-rls-cutover.sh` ejecuta los pasos 1-3
+> con verificaciones previas/posteriores, `--dry-run` por default y confirmación
+> explícita. La rotación de DATABASE_URL + redeploy (paso 4) sigue siendo manual
+> en Railway, deliberadamente.
+
 1. Crear roles (una vez, como superuser): ejecutar `scripts/db/init-roles.sql` adaptando
    passwords (en Railway el rol por defecto es superuser del servicio).
 2. Configurar `DATABASE_URL_MIGRATIONS` (rol `brandme_migrator`) en el servicio.
